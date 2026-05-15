@@ -50,6 +50,11 @@ export function MobileBigChart(props: Props) {
     () =>
       props.points.map((p) => ({
         symbol: p.symbol,
+        // Short label: strip "BTC-" prefix so BTC-USD → USD; for gold
+        // (and other big_chart assets) we want the actual ticker so
+        // duplicates like multiple USD-denominated venues stay
+        // distinguishable.
+        label: p.symbol.startsWith("BTC-") ? p.symbol.slice(4) : p.symbol,
         currency: p.proxy.currency,
         city: p.proxy.city,
         color: PALETTE[p.symbol] ?? "#e5e7eb",
@@ -179,7 +184,7 @@ export function MobileBigChart(props: Props) {
         </svg>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 px-2 py-1.5 text-[10px] max-h-[200px] overflow-y-auto">
+      <div className="grid grid-cols-2 gap-x-2 gap-y-1 px-2 py-1.5 max-h-[260px] overflow-y-auto">
         {venues
           .slice()
           .sort((a, b) => {
@@ -198,21 +203,25 @@ export function MobileBigChart(props: Props) {
                 key={v.symbol}
                 onTouchStart={() => setHoveredSymbol(v.symbol)}
                 onTouchEnd={() => setHoveredSymbol(null)}
-                className="flex items-center justify-between gap-1 px-1 py-0.5 rounded hover:bg-zinc-800/40 text-left"
+                className="flex flex-col items-stretch gap-0 px-1.5 py-1 rounded hover:bg-zinc-800/40 text-left min-w-0"
               >
                 <span className="flex items-center gap-1 min-w-0">
                   <span
                     className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
                     style={{ backgroundColor: v.color }}
                   />
-                  <span className="text-zinc-300 truncate">{v.currency}</span>
+                  <span className="text-zinc-400 truncate text-[9px] uppercase tracking-wider">
+                    {v.label}
+                  </span>
                 </span>
-                <span className="flex items-baseline gap-1 shrink-0">
-                  <span className="text-zinc-100 tabular-nums">
-                    {Number.isFinite(v.value) ? fmt(v.value, 0) : "—"}
+                <span className="flex items-baseline justify-between gap-1 mt-0.5">
+                  <span className="text-zinc-50 tabular-nums text-[11px]">
+                    {Number.isFinite(v.value)
+                      ? fmt(v.value, decimalsFor(median))
+                      : "—"}
                   </span>
                   <span
-                    className={`text-[8px] tabular-nums ${deltaClass(delta)}`}
+                    className={`text-[9px] tabular-nums shrink-0 ${deltaClass(delta)}`}
                   >
                     {Number.isFinite(delta)
                       ? `${delta >= 0 ? "+" : ""}${delta.toFixed(0)}`
@@ -233,6 +242,21 @@ function fmt(x: number, digits: number): string {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+}
+
+/**
+ * Pick a venue-cell decimal count that's wide enough to surface the
+ * per-venue gap. Gold trades ~$150/g → 2 decimals exposes ~7 bps per
+ * 0.01; BTC trades ~$90,000 → 0 decimals is enough since 1 BTC is
+ * never going to round-collapse across venues.
+ */
+function decimalsFor(median: number): number {
+  if (!Number.isFinite(median)) return 0;
+  const abs = Math.abs(median);
+  if (abs >= 10_000) return 0;
+  if (abs >= 1_000) return 1;
+  if (abs >= 10) return 2;
+  return 4;
 }
 
 function deltaClass(delta: number): string {
