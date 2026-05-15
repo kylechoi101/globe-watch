@@ -17,6 +17,14 @@ export interface AssetUniverseEntry {
   display_name: string;
   underlying_symbol: string; // yahoo, e.g. "^GSPC"
   trading_24_7: boolean;
+  /** "cards" (default) → 10 mini cards on the right.
+   *  "big_chart"        → single overlay chart of per-unit price, all venues. */
+  display_mode?: "cards" | "big_chart";
+  /** Human label for the per-unit y-axis ("BTC", "g"). */
+  display_unit?: string;
+  /** Convert implied_USD (per underlying-index unit) to display units.
+   *  e.g. gold's GC=F is USD per troy ounce; divisor 31.1035 → USD per gram. */
+  display_divisor?: number;
   proxies: Proxy[];
 }
 
@@ -82,7 +90,7 @@ export interface NewsArticle {
 }
 
 export interface NewsResponse {
-  asset: string;
+  scope: string;            // "global" — single feed, not asset-specific
   articles: NewsArticle[];
   fetched_at: number;
   attribution: string;

@@ -211,7 +211,15 @@ export function MethodologyPanel(props: Props) {
         </Section>
 
         <Section title="News panel & globe pins">
-          Headlines come from{" "}
+          One <strong>global news feed</strong> regardless of which asset
+          is selected. Markets are interconnected — a Federal Reserve
+          decision, an OPEC cut, an election in India, or a war headline
+          moves S&amp;P 500, Bitcoin, and gold all at once. The feed pulls
+          macro drivers (central banks, inflation, geopolitics, elections,
+          OPEC, sanctions, war) so the news context stays the same as you
+          flip between assets.
+          {" "}
+          Sourced from{" "}
           <a
             href="https://gdeltproject.org"
             target="_blank"
@@ -220,12 +228,12 @@ export function MethodologyPanel(props: Props) {
           >
             GDELT 2.0
           </a>
-          , a free academic / research news index. Per-asset keyword
-          queries; English-language; up to 10 entries after wire-service
-          dedup (titles normalized to a 70-char prefix, freshest kept per
-          group); cached 5 minutes server-side to respect GDELT&apos;s
-          1-req-per-5-s guidance. Only the headline + source domain +
-          timestamp are shown — no article body is reproduced or cached.
+          , a free academic / research news index. English-language;
+          up to 10 entries after wire-service dedup (titles normalized
+          to a 70-char prefix, freshest kept per group); cached 5 minutes
+          server-side to respect GDELT&apos;s 1-req-per-5-s guidance.
+          Only the headline + source domain + timestamp are shown — no
+          article body is reproduced or cached.
           {" "}
           <strong>Pinning:</strong> we scan the headline for a place name
           first (longest-match wins against a ~135-entry registry of

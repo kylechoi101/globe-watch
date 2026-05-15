@@ -56,10 +56,9 @@ export default {
     }
 
     if (url.pathname === "/api/news") {
-      const asset = url.searchParams.get("asset") ?? "SPX";
-      const articles = await getNews(asset);
+      const articles = await getNews();
       return json(req, {
-        asset,
+        scope: "global",
         articles,
         fetched_at: Math.floor(Date.now() / 1000),
         attribution:

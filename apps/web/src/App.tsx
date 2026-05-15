@@ -10,6 +10,7 @@ import type { NewsResponse } from "@globe-watch/shared";
 import { Globe } from "./components/Globe";
 import { DriftBadge } from "./components/DriftBadge";
 import { ChartsPanel } from "./components/ChartsPanel";
+import { BigPriceChart } from "./components/BigPriceChart";
 import { FollowIndexButton } from "./components/FollowIndexButton";
 import { MethodologyPanel } from "./components/MethodologyPanel";
 import { ProxyDetailPanel } from "./components/ProxyDetailPanel";
@@ -81,9 +82,8 @@ export default function App() {
     }
     return o;
   }, [rawStatuses, activeAsset, now]);
-  const assetId = activeAsset?.asset_id ?? "SPX";
   const { data: newsData } = useSWR<NewsResponse>(
-    api(`/api/news?asset=${encodeURIComponent(assetId)}`),
+    api("/api/news"),
     newsFetcher,
     { refreshInterval: 5 * 60 * 1000, revalidateOnFocus: false },
   );
@@ -135,10 +135,14 @@ export default function App() {
 
       <FollowIndexButton active={followSun} onToggle={toggleFollowSun} />
 
-      <ChartsPanel
-        points={drift.points}
-        referenceSymbol={drift.reference_symbol}
-      />
+      {activeAsset?.display_mode === "big_chart" ? (
+        <BigPriceChart asset={activeAsset} points={drift.points} />
+      ) : (
+        <ChartsPanel
+          points={drift.points}
+          referenceSymbol={drift.reference_symbol}
+        />
+      )}
 
       <ProxyDetailPanel
         points={drift.points}
@@ -146,7 +150,7 @@ export default function App() {
         referenceSymbol={drift.reference_symbol}
       />
 
-      <NewsPanel assetId={assetId} />
+      <NewsPanel />
 
       <button
         type="button"

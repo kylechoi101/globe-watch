@@ -6,13 +6,9 @@ import { api } from "../lib/api";
 const fetcher = (url: string) =>
   fetch(url).then((r) => r.json() as Promise<NewsResponse>);
 
-interface Props {
-  assetId: string;
-}
-
-export function NewsPanel(props: Props) {
+export function NewsPanel() {
   const { data } = useSWR<NewsResponse>(
-    api(`/api/news?asset=${encodeURIComponent(props.assetId)}`),
+    api("/api/news"),
     fetcher,
     {
       refreshInterval: 5 * 60 * 1000,
@@ -43,7 +39,7 @@ export function NewsPanel(props: Props) {
     <div className="absolute bottom-4 left-4 w-[340px] glass rounded-lg flex flex-col max-h-[calc(100vh-360px)]">
       <header className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-800/60">
         <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
-          news · {props.assetId.toLowerCase()}
+          global news
         </span>
         <span className="text-[9px] uppercase tracking-wider text-zinc-600">
           gdelt
@@ -52,7 +48,7 @@ export function NewsPanel(props: Props) {
 
       {articles.length === 0 ? (
         <div className="px-3 py-3 text-xs text-zinc-500 font-mono">
-          no recent English-language headlines for this asset.
+          no recent English-language headlines.
         </div>
       ) : (
         <ul className="overflow-y-auto divide-y divide-zinc-800/60">

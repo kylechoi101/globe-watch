@@ -89,37 +89,15 @@ interface GdeltResponse {
  * and overly broad queries (e.g. "stock") flood with low-quality output.
  */
 /**
- * GDELT's query language is sensitive to parentheses/quotes when combined
- * with `&`. Keep queries short and use plain keyword AND/OR forms.
+ * One global feed — drivers that move every asset. No more per-asset
+ * keyword filtering: the picker switches the underlying you're watching,
+ * the news stream is the same world the assets all live in.
+ *
+ * GDELT rejects single-word and short phrases ("war", "OPEC") with
+ * "phrase too short". Use multi-word phrases throughout.
  */
-function queryFor(asset_id: string): string {
-  switch (asset_id) {
-    case "SPX":
-      return '"S&P 500"';
-    case "NDX":
-      return '"Nasdaq"';
-    case "N225":
-      return '"Nikkei"';
-    case "FTSE":
-      return '"FTSE 100"';
-    case "DAX":
-      return '"DAX index"';
-    case "HSI":
-      return '"Hang Seng"';
-    case "AXJO":
-      return '"ASX 200"';
-    case "SX5E":
-      return '"Euro Stoxx"';
-    case "GOLD":
-      return '"gold price"';
-    case "BTC":
-      return '"bitcoin price"';
-    case "EM":
-      return '"emerging markets"';
-    default:
-      return '"stock market"';
-  }
-}
+const GLOBAL_QUERY =
+  '("Federal Reserve" OR "central bank" OR "interest rates" OR "inflation report" OR "global markets" OR "election results" OR "trade tariffs" OR "OPEC meeting" OR "geopolitical tensions" OR "economic outlook")';
 
 /**
  * GDELT titles occasionally contain stray spaces between digits and
@@ -144,17 +122,16 @@ function parseSeenDate(s: string): number {
   return Math.floor(Date.UTC(y, mo, d, h, mi, se) / 1000);
 }
 
-export async function getNews(asset_id: string): Promise<NewsArticle[]> {
-  const cacheKey = `news:${asset_id}`;
+export async function getNews(): Promise<NewsArticle[]> {
+  const cacheKey = "news:global";
   const cached = cacheGet<NewsArticle[]>(cacheKey);
   if (cached) return cached;
 
-  const query = queryFor(asset_id);
   const params = new URLSearchParams({
-    query,
+    query: GLOBAL_QUERY,
     mode: "ArtList",
     format: "json",
-    maxrecords: "20",
+    maxrecords: "30", // wider net before dedup; we keep top 10 after
     sort: "DateDesc",
     timespan: "24h",
   });

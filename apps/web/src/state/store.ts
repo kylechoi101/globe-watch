@@ -2,8 +2,9 @@ import { create } from "zustand";
 import type { AssetUniverseEntry, DriftPoint } from "@globe-watch/shared";
 
 export interface DriftSample {
-  ts: number;        // unix seconds
-  drift_bps: number; // NaN if missing
+  ts: number;          // unix seconds
+  drift_bps: number;   // NaN if missing
+  implied_usd: number; // per underlying-index unit; NaN if missing
 }
 
 const HISTORY_LIMIT = 240; // ~20 minutes at 5-second polling
@@ -58,7 +59,11 @@ export const useStore = create<AppState>((set) => ({
         const last = existing[existing.length - 1];
         // Skip if we already recorded a sample at this exact timestamp.
         if (last && last.ts === ts) continue;
-        const updated = existing.concat({ ts, drift_bps: p.drift_bps });
+        const updated = existing.concat({
+          ts,
+          drift_bps: p.drift_bps,
+          implied_usd: p.implied_usd,
+        });
         if (updated.length > HISTORY_LIMIT) updated.splice(0, updated.length - HISTORY_LIMIT);
         next[p.symbol] = updated;
       }

@@ -90,6 +90,9 @@
       "display_name": "Gold",
       "underlying_symbol": "GC=F",
       "trading_24_7": false,
+      "display_mode": "big_chart",
+      "display_unit": "USD / g",
+      "display_divisor": 31.1035,
       "proxies": [
         { "symbol": "GLD",     "name": "SPDR Gold Shares",                     "country": "US", "city": "New York", "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",          "scaling_k": 0.09157,   "is_reference_candidate": true },
         { "symbol": "IAU",     "name": "iShares Gold Trust",                   "country": "US", "city": "New York", "lat": 40.7400, "lon": -73.990,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",          "scaling_k": 0.01877,   "is_reference_candidate": true },
@@ -108,6 +111,9 @@
       "display_name": "Bitcoin",
       "underlying_symbol": "BTC-USD",
       "trading_24_7": true,
+      "display_mode": "big_chart",
+      "display_unit": "USD / BTC",
+      "display_divisor": 1,
       "notes": "Venues are spot fiat pairs from Yahoo Finance. Each pair shows the price of 1 BTC in that local currency. Drift between them is FX-translated cross-currency disagreement (plus small Yahoo source-feed timing differences).",
       "proxies": [
         { "symbol": "BTC-USD", "name": "BTC / USD spot",       "country": "US", "city": "New York",    "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",         "scaling_k": 1.0, "is_reference_candidate": true },

@@ -51,7 +51,7 @@ function ProxyCard(props: {
     symbol: referenceSymbol ?? "ref",
     color: "rgba(255,255,255,0.55)",
     emphasis: false,
-    samples: samples.map((s) => ({ ts: s.ts, drift_bps: 0 })),
+    samples: samples.map((s) => ({ ts: s.ts, drift_bps: 0, implied_usd: NaN })),
   };
   const proxyLine: ChartLine = {
     symbol: point.symbol,
