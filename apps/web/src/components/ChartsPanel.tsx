@@ -35,7 +35,7 @@ export function ChartsPanel(props: Props) {
   const isMobile = useIsMobile();
 
   return (
-    <div className="absolute top-14 right-3 bottom-28 flex flex-col gap-1.5 overflow-y-auto pointer-events-none md:top-16 md:right-4 md:bottom-4">
+    <div className="absolute top-3 right-3 bottom-28 flex flex-col gap-1.5 overflow-y-auto pointer-events-none md:top-16 md:right-4 md:bottom-4">
       {props.points.map((p) => (
         <ProxyCard
           key={p.symbol}
@@ -109,7 +109,7 @@ function ProxyCard(props: {
           }}
         >
           {Number.isFinite(point.drift_bps)
-            ? `${point.drift_bps >= 0 ? "+" : ""}${point.drift_bps.toFixed(1)}`
+            ? `${point.drift_bps >= 0 ? "+" : ""}${point.drift_bps.toFixed(1)} bps`
             : "—"}
         </span>
       </div>

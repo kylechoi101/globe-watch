@@ -124,7 +124,7 @@ export function MobileBigChart(props: Props) {
   const movementColor = pct >= 0 ? "text-emerald-400" : "text-rose-400";
 
   return (
-    <div className="md:hidden absolute top-14 right-3 w-[220px] z-10 glass rounded-md text-zinc-200 font-mono pointer-events-auto overflow-hidden">
+    <div className="md:hidden absolute top-3 right-3 w-[220px] z-10 glass rounded-md text-zinc-200 font-mono pointer-events-auto overflow-hidden">
       <div className="px-2.5 pt-2 pb-2 border-b border-zinc-800/60">
         <div className="flex items-baseline justify-between text-[9px] uppercase tracking-[0.12em] text-zinc-500">
           <span>
@@ -223,7 +223,7 @@ export function MobileBigChart(props: Props) {
                     className={`text-[9px] tabular-nums shrink-0 ${deltaClass(delta)}`}
                   >
                     {Number.isFinite(delta)
-                      ? `${delta >= 0 ? "+" : ""}${delta.toFixed(0)}`
+                      ? `${delta >= 0 ? "+" : ""}${delta.toFixed(0)} bps`
                       : ""}
                   </span>
                 </span>
