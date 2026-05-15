@@ -4,6 +4,9 @@ import { useStore } from "../state/store";
 
 interface Props {
   articles: NewsArticle[];
+  visible: boolean;
+  onClose: () => void;
+  onOpen: () => void;
 }
 
 const ROTATE_MS = 6000;
@@ -34,6 +37,20 @@ export function NewsRotator(props: Props) {
     if (index >= articles.length) setIndex(0);
   }, [articles.length, index]);
 
+  if (!props.visible) {
+    return (
+      <button
+        type="button"
+        onClick={props.onOpen}
+        className="md:hidden absolute right-3 bottom-3 glass rounded-full px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-300 hover:text-white z-20 flex items-center gap-1.5"
+        aria-label="show news feed"
+      >
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+        news
+      </button>
+    );
+  }
+
   if (articles.length === 0) {
     return (
       <div className="md:hidden absolute left-3 right-3 bottom-3 glass rounded-md px-3 py-2 text-zinc-500 font-mono text-[11px] z-20">
@@ -63,10 +80,22 @@ export function NewsRotator(props: Props) {
         target="_blank"
         rel="noopener noreferrer"
         onClick={onTap}
-        className={`block glass rounded-md px-3 py-2 font-mono transition-colors ${
+        className={`relative block glass rounded-md px-3 py-2 pr-7 font-mono transition-colors ${
           isSelected ? "ring-1 ring-amber-400/40 bg-amber-500/5" : ""
         }`}
       >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            props.onClose();
+          }}
+          className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center text-zinc-500 hover:text-zinc-100 text-sm leading-none"
+          aria-label="hide news feed"
+        >
+          ×
+        </button>
         <div className="flex items-center gap-2 text-[9px] uppercase tracking-wider text-zinc-500">
           <span
             className={`inline-block w-1.5 h-1.5 rounded-full ${
@@ -76,7 +105,9 @@ export function NewsRotator(props: Props) {
           <span>{a.domain}</span>
           <span className="text-zinc-700">·</span>
           <span>{a.source_country || "—"}</span>
-          <span className="ml-auto text-zinc-600">{fmtRelative(a.seen_at)}</span>
+          <span className="ml-auto mr-5 text-zinc-600">
+            {fmtRelative(a.seen_at)}
+          </span>
         </div>
         <div
           className={`mt-0.5 text-[12px] leading-snug line-clamp-2 ${

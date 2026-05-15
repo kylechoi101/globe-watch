@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { DriftPoint } from "@globe-watch/shared";
 import { useStore, type DriftSample } from "../state/store";
 import { driftColor } from "../lib/drift";
@@ -6,6 +7,20 @@ import { MiniChart, type ChartLine } from "./MiniChart";
 interface Props {
   points: DriftPoint[];
   referenceSymbol: string | null;
+  /** If true, hide on md+ screens (because BigPriceChart takes over on desktop). */
+  desktopHidden?: boolean;
+}
+
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false,
+  );
+  useEffect(() => {
+    const onR = () => setMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onR);
+    return () => window.removeEventListener("resize", onR);
+  }, []);
+  return mobile;
 }
 
 const PROXY_PALETTE: Record<string, string> = {
@@ -19,15 +34,20 @@ const PROXY_PALETTE: Record<string, string> = {
 
 export function ChartsPanel(props: Props) {
   const history = useStore((s) => s.history);
+  const isMobile = useIsMobile();
+  const desktopVis = props.desktopHidden ? "md:hidden" : "md:flex";
 
   return (
-    <div className="absolute top-16 right-4 bottom-4 flex-col gap-1.5 overflow-y-auto pointer-events-none hidden md:flex">
+    <div
+      className={`absolute top-14 right-3 bottom-28 flex flex-col gap-1.5 overflow-y-auto pointer-events-none md:top-16 md:right-4 md:bottom-4 ${desktopVis}`}
+    >
       {props.points.map((p) => (
         <ProxyCard
           key={p.symbol}
           point={p}
           referenceSymbol={props.referenceSymbol}
           samples={history[p.symbol] ?? []}
+          isMobile={isMobile}
         />
       ))}
     </div>
@@ -38,8 +58,12 @@ function ProxyCard(props: {
   point: DriftPoint;
   referenceSymbol: string | null;
   samples: DriftSample[];
+  isMobile: boolean;
 }) {
-  const { point, referenceSymbol, samples } = props;
+  const { point, referenceSymbol, samples, isMobile } = props;
+  const cardW = isMobile ? 156 : 220;
+  const chartW = isMobile ? 140 : 204;
+  const chartH = isMobile ? 54 : 70;
   const color = PROXY_PALETTE[point.symbol] ?? "#e5e7eb";
   const isReference = point.is_reference;
 
@@ -63,8 +87,8 @@ function ProxyCard(props: {
 
   return (
     <div
-      className="glass rounded-md px-2.5 py-1.5 text-zinc-200 pointer-events-auto"
-      style={{ width: 220 }}
+      className="glass rounded-md px-2 py-1 md:px-2.5 md:py-1.5 text-zinc-200 pointer-events-auto"
+      style={{ width: cardW }}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -94,7 +118,7 @@ function ProxyCard(props: {
             : "—"}
         </span>
       </div>
-      <MiniChart lines={lines} width={204} height={70} />
+      <MiniChart lines={lines} width={chartW} height={chartH} />
     </div>
   );
 }

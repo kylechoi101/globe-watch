@@ -19,7 +19,6 @@ import { NewsPanel } from "./components/NewsPanel";
 import { AssetPicker } from "./components/AssetPicker";
 import { Footer } from "./components/Footer";
 import { TickerButton } from "./components/TickerButton";
-import { MobileChartChip } from "./components/MobileChartChip";
 import { NewsRotator } from "./components/NewsRotator";
 
 const universeFetcher = (url: string) =>
@@ -140,6 +139,7 @@ export default function App() {
 
   const [dims, setDims] = useState({ w: window.innerWidth, h: window.innerHeight });
   const [methodologyOpen, setMethodologyOpen] = useState(false);
+  const [newsVisible, setNewsVisible] = useState(true);
   useEffect(() => {
     const onResize = () =>
       setDims({ w: window.innerWidth, h: window.innerHeight });
@@ -169,18 +169,18 @@ export default function App() {
 
       <FollowIndexButton active={followSun} onToggle={toggleFollowSun} />
 
-      {activeAsset?.display_mode === "big_chart" ? (
+      {activeAsset?.display_mode === "big_chart" && (
         <BigPriceChart
           asset={activeAsset}
           points={drift.points}
           statuses={statuses}
         />
-      ) : (
-        <ChartsPanel
-          points={drift.points}
-          referenceSymbol={drift.reference_symbol}
-        />
       )}
+      <ChartsPanel
+        points={drift.points}
+        referenceSymbol={drift.reference_symbol}
+        desktopHidden={activeAsset?.display_mode === "big_chart"}
+      />
 
       <ProxyDetailPanel
         points={drift.points}
@@ -213,12 +213,12 @@ export default function App() {
         onToggleFollow={toggleFollowSun}
       />
 
-      <MobileChartChip
-        asset={activeAsset ?? null}
-        points={drift.points}
+      <NewsRotator
+        articles={newsData?.articles ?? []}
+        visible={newsVisible}
+        onClose={() => setNewsVisible(false)}
+        onOpen={() => setNewsVisible(true)}
       />
-
-      <NewsRotator articles={newsData?.articles ?? []} />
 
       <Footer />
     </div>
