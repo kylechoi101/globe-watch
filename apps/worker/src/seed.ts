@@ -107,30 +107,44 @@ export async function refreshQuoteSeeds(env: SeedEnv): Promise<void> {
   const universe = universeData as UniverseData;
   const prior = (await readCombined(env)) ?? { rings: {}, updated_at: 0 };
 
-  const fetchedAt = Math.floor(Date.now() / 1000);
-  await Promise.all(
-    universe.assets.map(async (asset) => {
-      const symbols = symbolsForAsset(asset);
-      if (symbols.length === 0) return;
-      let quotes: Record<string, Quote>;
-      try {
-        quotes = await fetchYahoo(symbols);
-      } catch (err) {
-        console.warn("seed: fetch failed for", asset.asset_id, err);
-        return;
-      }
-      if (Object.keys(quotes).length === 0) return;
+  // Dedup all symbols across all assets, fetch once. The old per-asset
+  // Promise.all fired ~110 parallel Yahoo requests per tick which Yahoo
+  // would rate-limit (BTC samples often came back empty as a result).
+  // Most assets share FX pairs (USDJPY=X, EURUSD=X, …), so the dedup'd
+  // set is closer to ~50 symbols.
+  const wanted = new Set<string>();
+  const assetSymbols = new Map<string, string[]>();
+  for (const asset of universe.assets) {
+    const list = symbolsForAsset(asset);
+    assetSymbols.set(asset.asset_id, list);
+    for (const s of list) wanted.add(s);
+  }
+  let allQuotes: Record<string, Quote>;
+  try {
+    allQuotes = await fetchYahoo([...wanted]);
+  } catch (err) {
+    console.warn("seed: bulk fetch failed", err);
+    return;
+  }
 
-      const sample: SeedSample = { ts: fetchedAt, quotes };
-      const existing = prior.rings[asset.asset_id] ?? [];
-      const last = existing[existing.length - 1];
-      // Skip duplicate ts in case two crons fired in the same second.
-      if (last && last.ts === sample.ts) return;
-      const next = existing.concat(sample);
-      if (next.length > RING_SIZE) next.splice(0, next.length - RING_SIZE);
-      prior.rings[asset.asset_id] = next;
-    }),
-  );
+  const fetchedAt = Math.floor(Date.now() / 1000);
+  for (const asset of universe.assets) {
+    const list = assetSymbols.get(asset.asset_id) ?? [];
+    const quotes: Record<string, Quote> = {};
+    for (const sym of list) {
+      const q = allQuotes[sym];
+      if (q) quotes[sym] = q;
+    }
+    if (Object.keys(quotes).length === 0) continue;
+
+    const sample: SeedSample = { ts: fetchedAt, quotes };
+    const existing = prior.rings[asset.asset_id] ?? [];
+    const last = existing[existing.length - 1];
+    if (last && last.ts === sample.ts) continue;
+    const next = existing.concat(sample);
+    if (next.length > RING_SIZE) next.splice(0, next.length - RING_SIZE);
+    prior.rings[asset.asset_id] = next;
+  }
   prior.updated_at = fetchedAt;
 
   try {
