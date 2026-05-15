@@ -1,6 +1,6 @@
 export function Footer() {
   return (
-    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 pb-1 text-[9px] font-mono text-zinc-600 whitespace-nowrap pointer-events-none">
+    <div className="hidden md:block absolute bottom-0 left-1/2 -translate-x-1/2 pb-1 text-[9px] font-mono text-zinc-600 whitespace-nowrap pointer-events-none">
       educational · not financial advice · data{" "}
       <a
         href="https://finance.yahoo.com"

@@ -36,6 +36,7 @@ interface Props {
   asset: AssetUniverseEntry;
   points: DriftPoint[];
   statuses: Record<string, MarketStatus>;
+  embedded?: boolean;
 }
 
 interface HoverState {
@@ -138,11 +139,11 @@ export function BigPriceChart(props: Props) {
     return Array.from(s).sort((a, b) => a - b);
   }, [lines]);
 
-  function onMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+  function updateHoverAtClientX(clientX: number) {
     if (!hasData || !svgRef.current || allTimestamps.length === 0) return;
     const rect = svgRef.current.getBoundingClientRect();
     const scaleX = W / rect.width;
-    const px = (e.clientX - rect.left) * scaleX;
+    const px = (clientX - rect.left) * scaleX;
     if (px < padL || px > W - padR) {
       setHover(null);
       return;
@@ -151,6 +152,15 @@ export function BigPriceChart(props: Props) {
     const idx = nearestIndex(allTimestamps, tsCursor);
     const ts = allTimestamps[idx];
     setHover({ ts, x: xScale(ts) });
+  }
+
+  function onMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    updateHoverAtClientX(e.clientX);
+  }
+
+  function onTouchMove(e: React.TouchEvent<SVGSVGElement>) {
+    const t = e.touches[0] ?? e.changedTouches[0];
+    if (t) updateHoverAtClientX(t.clientX);
   }
 
   function onMouseLeave() {
@@ -193,7 +203,13 @@ export function BigPriceChart(props: Props) {
   }, [lines, focusSymbol]);
 
   return (
-    <div className="absolute top-16 right-4 bottom-4 w-[488px] glass rounded-lg flex flex-col pointer-events-auto overflow-hidden">
+    <div
+      className={
+        props.embedded
+          ? "h-full flex flex-col overflow-hidden"
+          : "absolute top-16 right-4 bottom-4 w-[488px] glass rounded-lg flex flex-col pointer-events-auto overflow-hidden hidden md:flex"
+      }
+    >
       <header className="px-3.5 pt-2.5 pb-2.5 border-b border-zinc-800/60">
         <div className="flex items-baseline justify-between mb-0.5">
           <span className="text-[10px] uppercase tracking-[0.12em] text-zinc-500 font-mono">
@@ -233,11 +249,15 @@ export function BigPriceChart(props: Props) {
       <div className="relative flex-shrink-0">
         <svg
           ref={svgRef}
-          width={W}
-          height={H}
-          className="block mx-auto"
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="xMidYMid meet"
+          className="block w-full max-w-full"
+          style={{ maxHeight: H }}
           onMouseMove={onMouseMove}
           onMouseLeave={onMouseLeave}
+          onTouchStart={onTouchMove}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onMouseLeave}
         >
           <defs>
             <linearGradient id="chartFade" x1="0" x2="0" y1="0" y2="1">
@@ -538,14 +558,16 @@ function HoverTooltip(props: {
     return [...focused, ...others].slice(0, 8);
   }, [props.rows, props.focusSymbol]);
 
+  const xPct = (props.x / props.chartWidth) * 100;
   return (
     <div
       className="pointer-events-none absolute top-2 glass rounded-md text-[10px] font-mono shadow-xl ring-1 ring-zinc-700/40"
       style={{
         minWidth: 188,
+        maxWidth: "calc(100% - 16px)",
         ...(flipLeft
-          ? { right: `${props.chartWidth - props.x + 10}px` }
-          : { left: `${props.x + 10}px` }),
+          ? { right: `calc(${100 - xPct}% + 6px)` }
+          : { left: `calc(${xPct}% + 6px)` }),
       }}
     >
       <div className="px-2.5 pt-1.5 pb-1 border-b border-zinc-800/70 flex items-center justify-between">

@@ -75,7 +75,7 @@ export function MiniChart(props: Props) {
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
-      className="block"
+      className="block max-w-full"
     >
       {/* y-axis grid + labels */}
       {yTicks.map((t) => (

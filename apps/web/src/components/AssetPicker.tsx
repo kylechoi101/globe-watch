@@ -25,7 +25,7 @@ export function AssetPicker(props: Props) {
   return (
     <div
       ref={ref}
-      className="absolute top-3 left-1/2 -translate-x-1/2 font-mono text-zinc-200"
+      className="absolute top-3 left-1/2 -translate-x-1/2 font-mono text-zinc-200 z-30"
     >
       <button
         type="button"
@@ -42,7 +42,7 @@ export function AssetPicker(props: Props) {
       {open && (
         <ul
           role="listbox"
-          className="absolute left-1/2 -translate-x-1/2 mt-1 w-[220px] glass rounded-md py-1 max-h-[60vh] overflow-y-auto"
+          className="absolute left-1/2 -translate-x-1/2 mt-1 w-[220px] glass rounded-md py-1 max-h-[40vh] md:max-h-[60vh] overflow-y-auto"
         >
           {props.universe.map((a) => {
             const isActive = a.asset_id === props.activeId;

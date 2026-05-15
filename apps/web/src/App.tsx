@@ -18,6 +18,7 @@ import { ProxyDetailPanel } from "./components/ProxyDetailPanel";
 import { NewsPanel } from "./components/NewsPanel";
 import { AssetPicker } from "./components/AssetPicker";
 import { Footer } from "./components/Footer";
+import { MobileSheet } from "./components/MobileSheet";
 
 const universeFetcher = (url: string) =>
   fetch(url).then((r) => r.json() as Promise<{ assets: AssetUniverseEntry[] }>);
@@ -189,7 +190,7 @@ export default function App() {
       <button
         type="button"
         onClick={() => setMethodologyOpen(true)}
-        className="absolute top-4 right-32 w-8 h-8 glass rounded-md text-xs font-mono text-zinc-400 hover:text-zinc-100 z-10"
+        className="absolute top-3 right-12 w-7 h-7 md:top-4 md:right-32 md:w-8 md:h-8 glass rounded-md text-xs font-mono text-zinc-400 hover:text-zinc-100 z-10"
         title="How drift is measured + skeptical caveats"
         aria-label="open methodology"
       >
@@ -199,6 +200,13 @@ export default function App() {
       <MethodologyPanel
         open={methodologyOpen}
         onClose={() => setMethodologyOpen(false)}
+      />
+
+      <MobileSheet
+        asset={activeAsset ?? null}
+        points={drift.points}
+        statuses={statuses}
+        referenceSymbol={drift.reference_symbol}
       />
 
       <Footer />

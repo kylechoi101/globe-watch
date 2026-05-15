@@ -6,6 +6,7 @@ import { MiniChart, type ChartLine } from "./MiniChart";
 interface Props {
   points: DriftPoint[];
   referenceSymbol: string | null;
+  embedded?: boolean;
 }
 
 const PROXY_PALETTE: Record<string, string> = {
@@ -19,15 +20,19 @@ const PROXY_PALETTE: Record<string, string> = {
 
 export function ChartsPanel(props: Props) {
   const history = useStore((s) => s.history);
+  const className = props.embedded
+    ? "h-full flex flex-col gap-1.5 overflow-y-auto px-3 py-3"
+    : "absolute top-16 right-4 bottom-4 flex flex-col gap-1.5 overflow-y-auto pointer-events-none hidden md:flex";
 
   return (
-    <div className="absolute top-16 right-4 bottom-4 flex flex-col gap-1.5 overflow-y-auto pointer-events-none">
+    <div className={className}>
       {props.points.map((p) => (
         <ProxyCard
           key={p.symbol}
           point={p}
           referenceSymbol={props.referenceSymbol}
           samples={history[p.symbol] ?? []}
+          embedded={props.embedded}
         />
       ))}
     </div>
@@ -38,6 +43,7 @@ function ProxyCard(props: {
   point: DriftPoint;
   referenceSymbol: string | null;
   samples: DriftSample[];
+  embedded?: boolean;
 }) {
   const { point, referenceSymbol, samples } = props;
   const color = PROXY_PALETTE[point.symbol] ?? "#e5e7eb";
@@ -63,8 +69,12 @@ function ProxyCard(props: {
 
   return (
     <div
-      className="glass rounded-md px-2.5 py-1.5 text-zinc-200 pointer-events-auto"
-      style={{ width: 220 }}
+      className={
+        props.embedded
+          ? "rounded-md px-2.5 py-1.5 text-zinc-200 bg-zinc-900/60 ring-1 ring-zinc-800/60"
+          : "glass rounded-md px-2.5 py-1.5 text-zinc-200 pointer-events-auto"
+      }
+      style={props.embedded ? undefined : { width: 220 }}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
