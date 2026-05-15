@@ -77,6 +77,31 @@ export async function fetchYahoo(symbols: string[]): Promise<Record<string, Quot
   return out;
 }
 
+/**
+ * Same as fetchYahoo but processes symbols in sequential chunks with a
+ * small inter-chunk delay. The live /api/quotes path asks for ~15
+ * symbols at a time and works fine; the cron seed refresher asks for
+ * ~50 at once and Yahoo silently drops some (BTC venues consistently
+ * came back empty). Chunked-sequential matches the live shape and
+ * keeps total wall time under a couple of seconds.
+ */
+export async function fetchYahooChunked(
+  symbols: string[],
+  chunkSize = 12,
+  delayMs = 250,
+): Promise<Record<string, Quote>> {
+  const out: Record<string, Quote> = {};
+  for (let i = 0; i < symbols.length; i += chunkSize) {
+    const chunk = symbols.slice(i, i + chunkSize);
+    const partial = await fetchYahoo(chunk);
+    Object.assign(out, partial);
+    if (i + chunkSize < symbols.length && delayMs > 0) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  return out;
+}
+
 function sessionFromYahoo(state: string | undefined): Quote["session"] {
   switch (state) {
     case "REGULAR":

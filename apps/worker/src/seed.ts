@@ -4,7 +4,7 @@ import type {
   SeedSample,
 } from "@globe-watch/shared";
 import universeData from "./data/universe.json";
-import { fetchYahoo } from "./quotes";
+import { fetchYahooChunked } from "./quotes";
 
 // Most-recent N quote snapshots we keep per asset. ~8 is enough to draw
 // a recognizable chart line on first paint without bloating KV — at 1
@@ -121,7 +121,7 @@ export async function refreshQuoteSeeds(env: SeedEnv): Promise<void> {
   }
   let allQuotes: Record<string, Quote>;
   try {
-    allQuotes = await fetchYahoo([...wanted]);
+    allQuotes = await fetchYahooChunked([...wanted]);
   } catch (err) {
     console.warn("seed: bulk fetch failed", err);
     return;
