@@ -57,13 +57,24 @@ export default {
 
     if (url.pathname === "/api/news") {
       const articles = await getNews();
-      return json(req, {
-        scope: "global",
-        articles,
-        fetched_at: Math.floor(Date.now() / 1000),
-        attribution:
-          "Headlines via GDELT Project (https://gdeltproject.org). Click through to original publishers for full content.",
-      });
+      return json(
+        req,
+        {
+          scope: "global",
+          articles,
+          fetched_at: Math.floor(Date.now() / 1000),
+          attribution:
+            "Headlines via GDELT Project (https://gdeltproject.org). Click through to original publishers for full content.",
+        },
+        {
+          headers: {
+            // Edge-cache for 5 min, serve stale up to 10 min while refreshing
+            // in the background. Cloudflare's CDN honors this so subsequent
+            // requests in the same region skip the GDELT round-trip entirely.
+            "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
+          },
+        },
+      );
     }
 
     if (url.pathname === "/api/quotes") {
@@ -95,5 +106,22 @@ export default {
     }
 
     return json(req, { error: "not found" }, { status: 404 });
+  },
+
+  /**
+   * Cron Trigger — runs every 5 minutes per wrangler.toml.
+   * Pre-warms the news cache so user-facing requests never pay the
+   * full GDELT round-trip latency.
+   */
+  async scheduled(
+    _event: ScheduledEvent,
+    _env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    ctx.waitUntil(
+      getNews().catch((err) => {
+        console.warn("scheduled news refresh failed", err);
+      }),
+    );
   },
 };

@@ -3,6 +3,12 @@ main = "src/index.ts"
 compatibility_date = "2026-05-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Pre-warm the news cache. GDELT takes 5-15s on a cold miss; this keeps
+# the in-memory cache (10-min TTL) refreshed in the background so user
+# loads almost always hit a warm response.
+[triggers]
+crons = ["*/5 * * * *"]
+
 # Public env defaults. Sensitive keys go through `wrangler secret put`.
 [vars]
 QUOTE_PRIMARY = "yahoo"     # "yahoo" or "twelvedata"

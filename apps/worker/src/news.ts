@@ -2,7 +2,10 @@ import { cacheGet, cacheSet } from "./cache";
 import countryCentroids from "./data/countries.json";
 import placeList from "./data/places.json";
 
-const CACHE_TTL = 300; // 5 minutes — well above GDELT's 1-per-5s suggestion.
+const CACHE_TTL = 600; // 10 minutes; refresh ~ every 5 min via Cron, so the
+                       // in-memory cache stays warm and the GDELT round-trip
+                       // happens in the background instead of on a user's first
+                       // page load.
 const MAX_ARTICLES = 10;
 
 const CENTROIDS = countryCentroids as unknown as Record<string, unknown>;

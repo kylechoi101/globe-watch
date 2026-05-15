@@ -7,7 +7,7 @@ const fetcher = (url: string) =>
   fetch(url).then((r) => r.json() as Promise<NewsResponse>);
 
 export function NewsPanel() {
-  const { data } = useSWR<NewsResponse>(
+  const { data, isLoading } = useSWR<NewsResponse>(
     api("/api/news"),
     fetcher,
     {
@@ -47,8 +47,15 @@ export function NewsPanel() {
       </header>
 
       {articles.length === 0 ? (
-        <div className="px-3 py-3 text-xs text-zinc-500 font-mono">
-          no recent English-language headlines.
+        <div className="px-3 py-4 text-xs text-zinc-500 font-mono flex items-center gap-2">
+          {isLoading ? (
+            <>
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <span>fetching global headlines…</span>
+            </>
+          ) : (
+            <span>no recent English-language headlines.</span>
+          )}
         </div>
       ) : (
         <ul className="overflow-y-auto divide-y divide-zinc-800/60">
