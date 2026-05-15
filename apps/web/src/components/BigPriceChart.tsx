@@ -12,7 +12,6 @@ const PALETTE: Record<string, string> = {
   "GLD": "#facc15",
   "IAU": "#fbbf24",
   "CGL.TO": "#fb923c",
-  "IAU.TO": "#f97316",
   "SGLN.L": "#22d3ee",
   "PHAU.L": "#0ea5e9",
   "4GLD.DE": "#a78bfa",

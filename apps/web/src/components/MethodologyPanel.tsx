@@ -41,7 +41,7 @@ export function MethodologyPanel(props: Props) {
           The dropdown at the top picks the underlying. Each asset is
           wired to 2–10 venues across major time-zone buckets (Americas /
           Europe / Asia–Pacific), with at most one venue per ~2-hour band
-          for equity indexes, and full 10-venue global spread for gold and
+          for equity indexes, and a 9–10 venue global spread for gold and
           bitcoin where geography matters most.
           <ul className="list-disc pl-5 mt-1 space-y-0.5 text-zinc-300">
             <li>
@@ -49,9 +49,12 @@ export function MethodologyPanel(props: Props) {
               {" "}— venues are ETF wrappers (SPY, CSPX.L, 1547.T, …).
             </li>
             <li>
-              <strong>Gold</strong> — 10 ETF wrappers across NY / Toronto /
-              London / Frankfurt / Tokyo / HK / Sydney. Yahoo doesn&apos;t
-              expose XAU spot pairs, so wrappers are the only option.
+              <strong>Gold</strong> — 9 unhedged ETF wrappers across NY /
+              Toronto / London / Frankfurt / Tokyo / HK / Sydney. Currency-
+              hedged ETFs are excluded because their local price is engineered
+              to ignore spot FX, which breaks the cross-venue drift method.
+              Yahoo doesn&apos;t expose XAU spot pairs, so wrappers are the
+              only option.
             </li>
             <li>
               <strong>Bitcoin</strong> — 10 spot fiat pairs (BTC-USD,
