@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="80%">
+      <stop offset="0%" stop-color="#0f1729" />
+      <stop offset="100%" stop-color="#000" />
+    </radialGradient>
+    <radialGradient id="planet" cx="38%" cy="38%" r="80%">
+      <stop offset="0%" stop-color="#5b8fcf" />
+      <stop offset="55%" stop-color="#1a3a6b" />
+      <stop offset="100%" stop-color="#04101e" />
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="b" />
+      <feMerge>
+        <feMergeNode in="b" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)" />
+
+  <!-- planet -->
+  <g transform="translate(820, 315)">
+    <circle r="240" fill="url(#planet)" />
+    <!-- atmosphere halo -->
+    <circle r="246" fill="none" stroke="rgba(90,140,200,0.35)" stroke-width="3" />
+    <!-- meridians + equator -->
+    <ellipse rx="240" ry="80"  fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1" />
+    <ellipse rx="240" ry="155" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1" />
+    <ellipse rx="80"  ry="240" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1" />
+    <ellipse rx="155" ry="240" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1" />
+
+    <!-- venue dots -->
+    <g filter="url(#glow)">
+      <circle cx="-150" cy="-90" r="6" fill="#facc15" />
+      <circle cx="-30"  cy="-130" r="6" fill="#facc15" />
+      <circle cx="80"   cy="-50" r="6" fill="#facc15" />
+      <circle cx="150"  cy="40" r="6" fill="#facc15" />
+      <circle cx="60"   cy="160" r="6" fill="#facc15" />
+      <circle cx="-110" cy="120" r="6" fill="#facc15" />
+    </g>
+
+    <!-- arcs hinting cross-market flow -->
+    <g fill="none" stroke="rgba(252,211,77,0.45)" stroke-width="1.2">
+      <path d="M -150 -90 Q -50 -190 -30 -130" />
+      <path d="M -30 -130 Q 60 -160 80 -50" />
+      <path d="M 80 -50 Q 200 -10 150 40" />
+    </g>
+  </g>
+
+  <!-- text block -->
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#fafafa">
+    <text x="80" y="180" font-size="92" font-weight="700" letter-spacing="-1.5">globe-watch</text>
+    <text x="80" y="240" font-size="28" fill="#a1a1aa" letter-spacing="2">CROSS-MARKET PRICE DISCOVERY · LIVE</text>
+
+    <text x="80" y="340" font-size="28" fill="#fef3c7">11 assets · 80+ venues · drift in bps</text>
+    <text x="80" y="380" font-size="28" fill="#fef3c7">NASA day/night · GDELT global news</text>
+
+    <text x="80" y="540" font-size="22" fill="#71717a" letter-spacing="1.5">SAME SECURITY · MANY CITIES · ONE GLOBE</text>
+    <text x="80" y="580" font-size="20" fill="#52525b">github.com/kylechoi101/globe-watch</text>
+  </g>
+</svg>

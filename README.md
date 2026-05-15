@@ -1,51 +1,107 @@
 # globe-watch
 
-Live rotating-globe display of cross-market ETF proxy drift. The screen
-shows, for a chosen asset (S&P 500 in the MVP), which exchanges are
-currently open, what each market's proxy ETF is pricing as the implied
-underlying, and the bps drift between them in real time. The globe is
-shaded for sun position with NASA's Black Marble night texture, so the
-night hemisphere shows city lights instead of a flat dark sphere.
+> **Live at https://kylechoi101.github.io/globe-watch/**
 
-Built as a companion to [time-lag-strategy](../time_lag_strategy/) —
+A rotating-globe display of how the same security gets priced
+simultaneously around the world. Pick an asset (S&P 500, Nasdaq,
+Nikkei, FTSE, DAX, Hang Seng, ASX 200, Euro Stoxx, gold, bitcoin,
+MSCI EM); watch each venue's implied price in USD, the drift between
+them in basis points, and a global news ticker pinned to where each
+story is actually happening — all on a NASA-textured globe with the
+day/night terminator anchored to real sun position.
+
+## Why this exists
+
+Markets don't actually close. When New York rings the bell at 4 PM ET,
+capital doesn't go to sleep — it just changes hands. London is eight
+hours into its day. Tokyo is about to open. The S&P 500 stops printing
+prices in the form most US retail investors recognize, but the *idea*
+of the S&P 500 keeps trading the entire night, in proxy ETFs in
+Toronto, London, Frankfurt, Tokyo, Hong Kong, Sydney. Every venue is
+voting on what the underlying is worth, in their own currency, with
+whatever they know in their session — earnings, central-bank actions,
+geopolitics, an OPEC announcement, an election. The drift between
+those simultaneous prices is the visible footprint of how information
+propagates around a planet that never stops trading. Most market
+dashboards bury that completely; this one makes it the centerpiece.
+
+The visual is a literal rotating globe with NASA's day/night terminator
+sweeping across it: lit hemisphere shows daytime, dark side glows with
+real city lights from Black Marble. Dots mark every venue, green when
+their exchange is open, dim when closed — and as Earth turns you
+watch the trading baton pass: NY → Sydney → Tokyo → Frankfurt →
+London → NY. A live news ticker pulls global macro headlines from
+GDELT, parses each one for the place it's actually about (a Reuters
+story about Tokyo gets pinned to Tokyo, not London), and clicking a
+headline flies the camera to that pin and shows the title right on the
+dot. Switch the dropdown and the same story plays out for Bitcoin (10
+fiat venues, 24/7, kimchi premium visible in real time), gold (10
+ETF wrappers across 8 cities, NAV drifts between them), or any of the
+other equity indexes.
+
+Built as a companion to
+[time-lag-strategy](https://github.com/kylechoi101/time-lag-strategy),
 the research pipeline that documented the proxy-decay mechanism this
 display visualizes.
 
-## What's interesting about it
+## What's interesting under the hood
 
-- **NAV-normalized drift, not raw price comparison.** Each proxy has a
-  per-fund scaling factor `k_i` that converts its local-currency price
-  to an implied value of the underlying index. Drift is measured in bps
-  vs an auto-selected reference proxy (whichever liquid candidate is
-  currently in its main session). See `apps/web/src/lib/drift.ts`.
-- **Day/night terminator with city lights.** Custom GLSL shader
-  injected into the globe material. Sun position updates every 60s via
-  `suncalc`. Textures from NASA Blue Marble + Black Marble.
-- **No data storage.** The worker holds a 5-second TTL in-memory cache
-  only; nothing is persisted. Reference data (universe, holidays) is
-  bundled JSON.
+- **NAV-normalized drift, not raw price comparison.** Each venue has
+  an empirically-fit scaling factor `kᵢ` that converts its
+  local-currency price to an implied USD value of the underlying.
+  Drift is `(implied_i − implied_ref) / implied_ref` in bps. See
+  `apps/web/src/lib/drift.ts`.
+- **FX precision repair.** Yahoo truncates low-magnitude direct pairs
+  (`KRWUSD=X = 0.0007` instead of the real `0.000670` — 4% error,
+  ~400 bps phantom drift). The drift library auto-detects symbol
+  orientation and uses `USDXXX=X` (with inversion) when the direct
+  pair is too coarse.
+- **Day/night terminator with city lights.** Custom GLSL shader on
+  the globe material. Sun direction computed from a NOAA mean-sun
+  formula (declination + RA − GMST), normals transformed by the model
+  matrix so lighting stays anchored to the planet (not the camera) as
+  you orbit.
+- **Headline-first geo pinning.** News pins use the place mentioned
+  in the headline — countries, cities, "Wall Street", "ECB", "the Fed"
+  — only falling back to the publisher's source country when the
+  headline is locationless. Wire-service duplicates folded by
+  normalized title prefix.
+- **24/7 spot mode for Bitcoin.** Bitcoin uses 10 spot fiat pairs
+  (BTC-USD/EUR/GBP/JPY/AUD/CAD/KRW/CNY/INR/RUB) instead of ETF
+  wrappers — direct cross-currency disagreement, no NAV premium in
+  the way. All venues stay "live" since BTC never closes.
+- **Big-chart mode for global commodities.** Gold and Bitcoin show
+  one large per-unit price chart (USD/g for gold, USD/BTC for
+  bitcoin) overlaying all 10 venues. The visible line spread is the
+  drift, but the eye reads the absolute price level.
+- **No data storage.** Worker uses a 5-second TTL in-memory cache
+  only; nothing is persisted. Reference data (universe, exchanges,
+  places) is bundled JSON.
 
 ## Architecture
 
 ```
-Browser (React + react-globe.gl)
+Browser (React + react-globe.gl + custom GLSL)
         │  polls /api/quotes every 5s via SWR
+        │  polls /api/news every 5min
         ▼
 Cloudflare Worker  (TypeScript)
-   /api/universe   → bundled JSON (S&P 500 proxy map)
-   /api/exchanges  → bundled JSON (session hours + holidays)
-   /api/quotes     → Yahoo v8/finance/chart (parallel per-symbol)
-                     Twelve Data fallback if QUOTE_PRIMARY=twelvedata
+   /api/universe   → bundled JSON: 11 assets × 26 ETF venues + 10 BTC fiats
+   /api/exchanges  → bundled JSON: session hours, holidays per MIC
+   /api/quotes     → Yahoo v8/finance/chart, parallel per-symbol, 5s cache
+   /api/news       → GDELT 2.0 Doc API, global macro feed, 5min cache,
+                     headline-first geo enrichment, wire-service dedup
 ```
 
-## Repo Layout
+## Repo layout
 
 ```
 apps/
-  web/      Vite + React + TS + Tailwind + react-globe.gl
-  worker/   Cloudflare Worker (wrangler), Yahoo + Twelve Data adapters
+  web/      Vite + React + TS + Tailwind + react-globe.gl + GLSL shader
+  worker/   Cloudflare Worker (wrangler), Yahoo + GDELT adapters
 packages/
   shared/   Cross-app TypeScript types
+.github/workflows/deploy-pages.yml  Auto-deploy to GitHub Pages on push
 ```
 
 ## Local dev
@@ -55,80 +111,44 @@ Requires Node 20+ and npm 10+.
 ```bash
 npm install
 npm run dev:worker   # http://localhost:8787
-npm run dev:web      # http://localhost:5173  (proxies /api/* to worker)
+npm run dev:web      # http://localhost:5173 (proxies /api/* to worker)
 ```
 
-Open http://localhost:5173 in a browser.
-
-## Smoke checks
-
-```bash
-curl 'http://localhost:8787/api/universe'      | head -c 200
-curl 'http://localhost:8787/api/exchanges'     | head -c 200
-curl 'http://localhost:8787/api/quotes?symbols=SPY,1547.T,IVV.AX,CSPX.L,JPYUSD=X'
-```
-
-Verify the quote response has populated `quotes.SPY.price` and the FX
-symbols. Initial drift values should be within a few bps across the
-six proxies if the scaling factors are current.
-
-## Quote providers
-
-The worker defaults to Yahoo Finance via the v8 chart endpoint — no
-API key required, public CORS-friendly. To use Twelve Data as primary
-instead:
-
-```bash
-cd apps/worker
-wrangler secret put TWELVE_DATA_KEY
-# Edit wrangler.toml: QUOTE_PRIMARY = "twelvedata"
-```
-
-Yahoo remains as the automatic fallback if the primary call fails.
-
-## Scaling factors
-
-`apps/worker/src/data/universe.json` stores `scaling_k` per proxy:
-
-```
-implied_underlying_usd = (proxy_price_local / fx_to_usd) / scaling_k
-```
-
-The seed values in this repo are fitted to current spot at the time of
-authoring (see `generated_at`). To refresh empirically over a 60-day
-overlapping-hours OLS, add `scripts/fit_scaling_factors.ts` (planned
-in Phase 4) — for now you can hand-compute from a fresh quote of each
-proxy and `^GSPC`.
+Open http://localhost:5173.
 
 ## Deployment
 
-Cloudflare Pages + Workers:
+Frontend → GitHub Pages, backend → Cloudflare Workers. Both free.
 
 ```bash
+# Backend
 cd apps/worker && npx wrangler deploy
-cd ../web && npm run build && npx wrangler pages deploy dist
+
+# Frontend (auto-builds on push to main via .github/workflows/deploy-pages.yml)
+git push
 ```
 
-Point the web build's `/api/*` calls at the deployed worker URL by
-setting `VITE_API_BASE` in `apps/web/.env.production`.
+The workflow reads `VITE_API_BASE` from a GitHub Actions repo variable
+(Settings → Secrets and variables → Actions → Variables) and bakes the
+worker URL into the build.
 
-## Phased roadmap
+## Methodology
 
-Implemented (Phase 1 — MVP):
-- [x] Globe with NASA day/night shader + soft terminator
-- [x] Six S&P 500 proxies (SPY, VFV.TO, CSPX.L, CSPX.AS, 1547.T, IVV.AX)
-- [x] NAV-normalized FX-adjusted drift in bps
-- [x] Auto-selected reference proxy
-- [x] Open-market detection (timezone + bundled holidays)
-- [x] Clock HUD with next-open countdown + follow-the-sun toggle
-- [x] Cloudflare Worker backend with TTL cache
+Detailed math, skeptical caveats, and data-source disclosure live
+inside the app — click the **?** button at the top-right. Covers:
+implied-USD computation, scaling factors and their decay, reference
+selection, FX timing artifacts, NAV premia, day/night shader, news
+sourcing, and what-this-is-vs-isn't.
 
-Planned (see `../.claude/plans/this-gave-me-an-partitioned-lampson.md`):
-- Phase 2 — USGS earthquakes + GDELT news layer
-- Phase 3 — Holiday + central-bank rate-decision overlay
-- Phase 4 — Multi-asset picker (Nasdaq, Nikkei, KOSPI, gold, oil, BTC)
+## Data sources
+
+- **Quotes** — Yahoo Finance v8 chart endpoint (undocumented public API).
+- **News** — [GDELT Project](https://gdeltproject.org), free
+  research/non-commercial use; we cache 5 min server-side and only
+  display headline + source domain + timestamp.
+- **Globe textures** — NASA Visible Earth (Blue Marble + Black Marble).
 
 ## License
 
-CC BY-NC-SA 4.0 — same as the parent `time_lag_strategy` repo. See
-`LICENSE`.
+CC BY-NC-SA 4.0 — attribution required, non-commercial, share-alike.
+See [LICENSE](LICENSE).
