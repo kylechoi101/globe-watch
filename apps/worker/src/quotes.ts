@@ -65,7 +65,12 @@ async function fetchYahooOne(symbol: string): Promise<Quote | null> {
   };
 }
 
-async function fetchYahoo(symbols: string[]): Promise<Record<string, Quote>> {
+/**
+ * Exported so the cron seed refresher can hit Yahoo directly without
+ * routing through the read-through cache (cron is a fresh isolate; the
+ * in-memory cache is empty for it anyway).
+ */
+export async function fetchYahoo(symbols: string[]): Promise<Record<string, Quote>> {
   const results = await Promise.all(symbols.map((s) => fetchYahooOne(s)));
   const out: Record<string, Quote> = {};
   for (const q of results) if (q) out[q.symbol] = q;

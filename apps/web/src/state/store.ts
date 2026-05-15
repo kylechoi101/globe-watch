@@ -20,6 +20,15 @@ interface AppState {
   /** per-symbol rolling history. lives only in memory. */
   history: Record<string, DriftSample[]>;
   pushDriftSnapshot: (points: DriftPoint[], ts: number) => void;
+  /**
+   * Seed history from the worker's /api/seed ring buffer. Only fills
+   * gaps before the first live sample lands — never overwrites samples
+   * we've already collected ourselves, so the live chart isn't disturbed
+   * if the user lingers and the seed is refetched later.
+   */
+  seedDriftHistory: (
+    perSymbol: Record<string, DriftSample[]>,
+  ) => void;
 
   activeChartTab: string; // "ALL" or a proxy symbol
   setActiveChartTab: (tab: string) => void;
@@ -66,6 +75,27 @@ export const useStore = create<AppState>((set) => ({
         });
         if (updated.length > HISTORY_LIMIT) updated.splice(0, updated.length - HISTORY_LIMIT);
         next[p.symbol] = updated;
+      }
+      return { history: next };
+    }),
+  seedDriftHistory: (perSymbol) =>
+    set((state) => {
+      const next: Record<string, DriftSample[]> = { ...state.history };
+      for (const [symbol, seeded] of Object.entries(perSymbol)) {
+        if (!seeded || seeded.length === 0) continue;
+        const existing = next[symbol] ?? [];
+        // Drop seeded samples that are at-or-newer than any live sample
+        // we already have, so seeding never rewrites the live tail.
+        const oldestLive = existing[0]?.ts ?? Infinity;
+        const fresh = seeded.filter((s) => s.ts < oldestLive);
+        if (fresh.length === 0) continue;
+        // Sort just to be safe — KV preserves order but the wire shape
+        // is whatever cron last wrote.
+        const merged = fresh.concat(existing).sort((a, b) => a.ts - b.ts);
+        if (merged.length > HISTORY_LIMIT) {
+          merged.splice(0, merged.length - HISTORY_LIMIT);
+        }
+        next[symbol] = merged;
       }
       return { history: next };
     }),

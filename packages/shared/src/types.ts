@@ -95,3 +95,20 @@ export interface NewsResponse {
   fetched_at: number;
   attribution: string;
 }
+
+/**
+ * Rolling ring buffer of quote snapshots written by the worker's cron.
+ * One sample per cron tick; capped at SEED_RING_SIZE (~8) most-recent.
+ * Lets the frontend draw a real chart line on first paint instead of
+ * waiting ~10s for two live polls to land.
+ */
+export interface SeedSample {
+  ts: number;                              // unix seconds
+  quotes: Record<string, Quote>;
+}
+
+export interface SeedResponse {
+  asset_id: string;
+  samples: SeedSample[];
+  fetched_at: number;
+}

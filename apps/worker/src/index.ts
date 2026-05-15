@@ -2,6 +2,7 @@ import universeData from "./data/universe.json";
 import exchangesData from "./data/exchanges.json";
 import { getQuotes } from "./quotes";
 import { getNews, refreshNewsCache } from "./news";
+import { getSeed, refreshQuoteSeeds } from "./seed";
 
 interface Env {
   QUOTE_PRIMARY?: string;
@@ -98,6 +99,24 @@ export default {
       return json(req, data);
     }
 
+    if (url.pathname === "/api/seed") {
+      const assetId = url.searchParams.get("asset") ?? "";
+      if (!assetId) {
+        return json(req, { error: "missing ?asset" }, { status: 400 });
+      }
+      const seed = await getSeed(env, assetId);
+      if (!seed) {
+        return json(req, { error: "no seed yet" }, { status: 404 });
+      }
+      return json(req, seed, {
+        headers: {
+          // Seed only changes once a minute when cron fires, so a 30 s
+          // edge cache is plenty and keeps repeat first-paints free.
+          "Cache-Control": "public, max-age=30, stale-while-revalidate=120",
+        },
+      });
+    }
+
     if (url.pathname === "/" || url.pathname === "/api") {
       return json(req, {
         name: "globe-watch worker",
@@ -105,7 +124,8 @@ export default {
           "/api/universe",
           "/api/exchanges",
           "/api/quotes?symbols=SPY,1547.T",
-          "/api/news?asset=SPX",
+          "/api/seed?asset=GOLD",
+          "/api/news",
         ],
       });
     }
@@ -113,11 +133,10 @@ export default {
     return json(req, { error: "not found" }, { status: 404 });
   },
 
-  /**
-   * Cron Trigger — runs every 5 minutes per wrangler.toml.
-   * Force-refreshes the KV news cache so user requests in every isolate
-   * (not just the one the cron ran in) see warm data.
-   */
+  // Cron — fires every 5 min (see wrangler.toml). Refreshes both the
+  // news cache and the seed rings. Two KV writes per tick (one news,
+  // one combined seed) keeps us well under the 1000-writes/day free
+  // tier cap.
   async scheduled(
     _event: ScheduledEvent,
     env: Env,
@@ -126,6 +145,11 @@ export default {
     ctx.waitUntil(
       refreshNewsCache(env).catch((err) => {
         console.warn("scheduled news refresh failed", err);
+      }),
+    );
+    ctx.waitUntil(
+      refreshQuoteSeeds(env).catch((err) => {
+        console.warn("scheduled seed refresh failed", err);
       }),
     );
   },

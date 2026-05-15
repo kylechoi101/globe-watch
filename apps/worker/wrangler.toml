@@ -3,11 +3,13 @@ main = "src/index.ts"
 compatibility_date = "2026-05-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Pre-warm the news cache. GDELT takes 5-15s on a cold miss; this keeps
-# the KV-backed cache (10-min TTL) refreshed in the background so user
-# loads almost always hit a warm response — and because KV is shared
-# across every isolate worldwide, the cron's warming is visible to all
-# requests, not just the isolate the cron happened to land in.
+# Single cron every 5 min. Each fire:
+#   - refreshes the seed ring (one combined KV write covering all assets
+#     — see seed.ts for why one combined write matters for the free-tier
+#     1000-writes/day KV cap)
+#   - refreshes the GDELT news cache
+# Two writes/tick × 288 ticks/day = 576/day, leaving headroom under
+# 1000 for any cold-isolate live cache-miss writes from news.
 [triggers]
 crons = ["*/5 * * * *"]
 

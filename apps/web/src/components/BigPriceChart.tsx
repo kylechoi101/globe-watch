@@ -39,12 +39,22 @@ interface Props {
 }
 
 interface HoverState {
-  ts: number; // unix seconds — snapped to nearest sample
-  x: number;  // screen x in svg coords
+  ts: number;
+  x: number;
+}
+
+interface Line {
+  symbol: string;
+  city: string;
+  color: string;
+  emphasis: boolean;
+  latest: number;
+  samples: { ts: number; v: number }[];
 }
 
 export function BigPriceChart(props: Props) {
   const history = useStore((s) => s.history);
+  const hoveredSymbol = useStore((s) => s.hoveredSymbol);
   const setHoveredSymbol = useStore((s) => s.setHoveredSymbol);
   const divisor = props.asset.display_divisor ?? 1;
   const unit = props.asset.display_unit ?? "USD";
@@ -53,7 +63,7 @@ export function BigPriceChart(props: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  const lines = useMemo(
+  const lines: Line[] = useMemo(
     () =>
       props.points.map((p) => ({
         symbol: p.symbol,
@@ -84,8 +94,12 @@ export function BigPriceChart(props: Props) {
     validLatest.length === 0
       ? NaN
       : Math.max(...validLatest) - Math.min(...validLatest);
+  const spreadBps =
+    Number.isFinite(spread) && Number.isFinite(median) && median !== 0
+      ? (spread / median) * 10_000
+      : NaN;
 
-  // ----- chart bounds -----
+  // Chart bounds.
   const all = lines.flatMap((l) => l.samples).filter((s) => Number.isFinite(s.v));
   let yMin = Infinity, yMax = -Infinity, tMin = Infinity, tMax = -Infinity;
   for (const s of all) {
@@ -106,8 +120,8 @@ export function BigPriceChart(props: Props) {
     yMax += pad;
   }
 
-  const W = 460, H = 360;
-  const padL = 64, padR = 12, padT = 18, padB = 28;
+  const W = 460, H = 320;
+  const padL = 56, padR = 14, padT = 14, padB = 26;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
 
@@ -118,8 +132,6 @@ export function BigPriceChart(props: Props) {
 
   const yTicks = niceTicks(yMin, yMax, 5);
 
-  // Pre-compute the union of every sample timestamp so we can snap the
-  // hover cursor to the nearest real sample instead of interpolating.
   const allTimestamps = useMemo(() => {
     const s = new Set<number>();
     for (const l of lines) for (const p of l.samples) if (Number.isFinite(p.v)) s.add(p.ts);
@@ -129,8 +141,6 @@ export function BigPriceChart(props: Props) {
   function onMouseMove(e: React.MouseEvent<SVGSVGElement>) {
     if (!hasData || !svgRef.current || allTimestamps.length === 0) return;
     const rect = svgRef.current.getBoundingClientRect();
-    // Account for SVG's intrinsic size vs. its rendered size — the svg
-    // has width=W/height=H attributes but CSS can scale it.
     const scaleX = W / rect.width;
     const px = (e.clientX - rect.left) * scaleX;
     if (px < padL || px > W - padR) {
@@ -138,7 +148,6 @@ export function BigPriceChart(props: Props) {
       return;
     }
     const tsCursor = tMin + ((px - padL) * (tMax - tMin)) / Math.max(1, innerW);
-    // Binary-search the nearest sample ts.
     const idx = nearestIndex(allTimestamps, tsCursor);
     const ts = allTimestamps[idx];
     setHover({ ts, x: xScale(ts) });
@@ -148,9 +157,6 @@ export function BigPriceChart(props: Props) {
     setHover(null);
   }
 
-  // Look up each line's value at the hover timestamp (exact match — we
-  // snapped to a sample ts that exists somewhere in the chart, though
-  // not every line necessarily has a sample at that exact ts).
   const hoverValues = useMemo(() => {
     if (!hover) return null;
     return lines.map((l) => {
@@ -159,6 +165,9 @@ export function BigPriceChart(props: Props) {
     });
   }, [hover, lines]);
 
+  const focusSymbol = hoveredSymbol ?? selected;
+  const hasFocus = focusSymbol !== null;
+
   const selectedPoint = selected
     ? props.points.find((p) => p.symbol === selected) ?? null
     : null;
@@ -166,24 +175,62 @@ export function BigPriceChart(props: Props) {
     ? props.statuses[selectedPoint.proxy.exchange_mic]
     : undefined;
 
+  // "Δ since open": diff vs oldest sample of the focused line if any,
+  // otherwise vs the median line's oldest sample. Falls back gracefully
+  // when the seed hasn't loaded yet.
+  const movement = useMemo(() => {
+    const ref = focusSymbol
+      ? lines.find((l) => l.symbol === focusSymbol)
+      : lines.find((l) => l.emphasis) ?? lines[0];
+    if (!ref) return null;
+    const valid = ref.samples.filter((s) => Number.isFinite(s.v));
+    if (valid.length < 2) return null;
+    const first = valid[0].v;
+    const last = valid[valid.length - 1].v;
+    const abs = last - first;
+    const pct = first !== 0 ? (abs / first) * 100 : 0;
+    return { abs, pct, fromTs: valid[0].ts, label: ref.symbol };
+  }, [lines, focusSymbol]);
+
   return (
-    <div className="absolute top-16 right-4 bottom-4 w-[480px] glass rounded-lg flex flex-col pointer-events-auto">
-      <header className="px-3 pt-2 pb-1 border-b border-zinc-800/50">
-        <div className="flex items-baseline justify-between">
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono">
-            {unit} · {lines.length} venues
+    <div className="absolute top-16 right-4 bottom-4 w-[488px] glass rounded-lg flex flex-col pointer-events-auto overflow-hidden">
+      <header className="px-3.5 pt-2.5 pb-2.5 border-b border-zinc-800/60">
+        <div className="flex items-baseline justify-between mb-0.5">
+          <span className="text-[10px] uppercase tracking-[0.12em] text-zinc-500 font-mono">
+            {props.asset.display_name} · {unit}
           </span>
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono">
-            spread {Number.isFinite(spread) ? fmtNum(spread, 2) : "—"}
+          <span className="text-[10px] uppercase tracking-[0.12em] text-zinc-500 font-mono">
+            {lines.length} venues · spread{" "}
+            <span className="text-zinc-300">
+              {Number.isFinite(spreadBps) ? `${fmtNum(spreadBps, 0)} bps` : "—"}
+            </span>
           </span>
         </div>
-        <div className="font-mono text-3xl font-semibold text-zinc-100 tabular-nums leading-tight">
-          {Number.isFinite(median) ? fmtNum(median, 2) : "—"}
-          <span className="text-sm text-zinc-500 ml-1.5">{unit}</span>
+        <div className="flex items-end justify-between gap-3">
+          <div className="font-mono text-[34px] font-semibold text-zinc-50 tabular-nums leading-none tracking-tight">
+            {Number.isFinite(median) ? fmtNum(median, 2) : "—"}
+            <span className="text-[13px] text-zinc-500 ml-1.5 font-normal align-baseline">
+              median
+            </span>
+          </div>
+          {movement && (
+            <div
+              className={`text-right font-mono leading-tight ${
+                movement.abs >= 0 ? "text-emerald-400" : "text-rose-400"
+              }`}
+            >
+              <div className="text-[15px] tabular-nums">
+                {movement.abs >= 0 ? "▲" : "▼"} {fmtNum(Math.abs(movement.pct), 2)}%
+              </div>
+              <div className="text-[9px] text-zinc-500 uppercase tracking-wider">
+                since {fmtTime(movement.fromTs)} · {movement.label}
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
-      <div className="relative">
+      <div className="relative flex-shrink-0">
         <svg
           ref={svgRef}
           width={W}
@@ -192,6 +239,22 @@ export function BigPriceChart(props: Props) {
           onMouseMove={onMouseMove}
           onMouseLeave={onMouseLeave}
         >
+          <defs>
+            <linearGradient id="chartFade" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="rgba(24,24,27,0)" />
+              <stop offset="100%" stopColor="rgba(24,24,27,0.4)" />
+            </linearGradient>
+          </defs>
+
+          <rect
+            x={padL}
+            y={padT}
+            width={innerW}
+            height={innerH}
+            fill="url(#chartFade)"
+            pointerEvents="none"
+          />
+
           {yTicks.map((t) => (
             <g key={t}>
               <line
@@ -199,8 +262,7 @@ export function BigPriceChart(props: Props) {
                 x2={W - padR}
                 y1={yScale(t)}
                 y2={yScale(t)}
-                stroke="rgba(255,255,255,0.05)"
-                strokeDasharray="2 3"
+                stroke="rgba(255,255,255,0.045)"
               />
               <text
                 x={padL - 6}
@@ -222,28 +284,49 @@ export function BigPriceChart(props: Props) {
                 .map((s) => `${xScale(s.ts).toFixed(1)},${yScale(s.v).toFixed(1)}`)
                 .join(" ");
               if (!pts) return null;
-              const isSelected = selected === l.symbol;
-              const isDimmed = selected !== null && !isSelected;
-              const baseWidth = l.emphasis ? 2 : 1.25;
+              const isFocused = focusSymbol === l.symbol;
+              const isDimmed = hasFocus && !isFocused;
+              const baseWidth = l.emphasis ? 2 : 1.4;
+              const stroke = isFocused ? baseWidth + 1.2 : baseWidth;
+              const opacity = isDimmed
+                ? 0.14
+                : isFocused
+                  ? 1
+                  : l.emphasis
+                    ? 0.95
+                    : 0.7;
               return (
                 <g key={l.symbol}>
-                  {/* Invisible thick stroke for easier click/hover pickup */}
+                  {/* Invisible thicker path for click/hover pickup */}
                   <polyline
                     points={pts}
                     fill="none"
                     stroke="transparent"
-                    strokeWidth={10}
+                    strokeWidth={12}
                     style={{ cursor: "pointer" }}
                     onMouseEnter={() => setHoveredSymbol(l.symbol)}
                     onMouseLeave={() => setHoveredSymbol(null)}
                     onClick={() => setSelected(l.symbol)}
                   />
+                  {/* Glow under the focused line so it really pops */}
+                  {isFocused && (
+                    <polyline
+                      points={pts}
+                      fill="none"
+                      stroke={l.color}
+                      strokeWidth={stroke + 4}
+                      strokeOpacity={0.2}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  )}
                   <polyline
                     points={pts}
                     fill="none"
                     stroke={l.color}
-                    strokeWidth={isSelected ? baseWidth + 1 : baseWidth}
-                    strokeOpacity={isDimmed ? 0.2 : l.emphasis ? 1 : 0.75}
+                    strokeWidth={stroke}
+                    strokeOpacity={opacity}
                     strokeLinejoin="round"
                     strokeLinecap="round"
                     pointerEvents="none"
@@ -272,22 +355,39 @@ export function BigPriceChart(props: Props) {
                 x2={hover.x}
                 y1={padT}
                 y2={H - padB}
-                stroke="rgba(255,255,255,0.25)"
+                stroke="rgba(255,255,255,0.42)"
                 strokeWidth={1}
-                strokeDasharray="3 3"
               />
               {hoverValues.map(
                 (h) =>
                   Number.isFinite(h.v) && (
-                    <circle
-                      key={h.line.symbol}
-                      cx={hover.x}
-                      cy={yScale(h.v)}
-                      r={3}
-                      fill={h.line.color}
-                      stroke="rgba(0,0,0,0.6)"
-                      strokeWidth={1}
-                    />
+                    <g key={h.line.symbol}>
+                      {/* Outer halo for the focused row */}
+                      {focusSymbol === h.line.symbol && (
+                        <circle
+                          cx={hover.x}
+                          cy={yScale(h.v)}
+                          r={7}
+                          fill={h.line.color}
+                          fillOpacity={0.18}
+                        />
+                      )}
+                      <circle
+                        cx={hover.x}
+                        cy={yScale(h.v)}
+                        r={
+                          focusSymbol === h.line.symbol
+                            ? 4
+                            : hasFocus
+                              ? 2
+                              : 3.2
+                        }
+                        fill={h.line.color}
+                        stroke="rgba(0,0,0,0.7)"
+                        strokeWidth={1}
+                        opacity={hasFocus && focusSymbol !== h.line.symbol ? 0.35 : 1}
+                      />
+                    </g>
                   ),
               )}
             </g>
@@ -295,11 +395,24 @@ export function BigPriceChart(props: Props) {
 
           {hasData && (
             <>
-              <text x={padL} y={H - 8} fill="rgba(255,255,255,0.3)" fontSize={9} fontFamily="ui-monospace, monospace">
+              <text
+                x={padL}
+                y={H - 6}
+                fill="rgba(255,255,255,0.35)"
+                fontSize={9}
+                fontFamily="ui-monospace, monospace"
+              >
                 {fmtTime(tMin)}
               </text>
-              <text x={W - padR} y={H - 8} textAnchor="end" fill="rgba(255,255,255,0.3)" fontSize={9} fontFamily="ui-monospace, monospace">
-                {fmtTime(tMax)}
+              <text
+                x={W - padR}
+                y={H - 6}
+                textAnchor="end"
+                fill="rgba(255,255,255,0.35)"
+                fontSize={9}
+                fontFamily="ui-monospace, monospace"
+              >
+                {fmtTime(tMax)} · {fmtSpan(tMax - tMin)}
               </text>
             </>
           )}
@@ -310,10 +423,10 @@ export function BigPriceChart(props: Props) {
             chartWidth={W}
             x={hover.x}
             ts={hover.ts}
+            median={median}
+            focusSymbol={focusSymbol}
             rows={hoverValues
               .filter((h) => Number.isFinite(h.v))
-              .sort((a, b) => b.v - a.v)
-              .slice(0, 8)
               .map((h) => ({
                 symbol: h.line.symbol,
                 color: h.line.color,
@@ -339,38 +452,69 @@ export function BigPriceChart(props: Props) {
         )}
       </div>
 
-      <div className="px-3 py-2 border-t border-zinc-800/50 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] font-mono overflow-y-auto">
-        {lines.map((l) => {
-          const isSelected = selected === l.symbol;
-          return (
-            <button
-              type="button"
-              key={l.symbol}
-              onClick={() => setSelected(isSelected ? null : l.symbol)}
-              onMouseEnter={() => setHoveredSymbol(l.symbol)}
-              onMouseLeave={() => setHoveredSymbol(null)}
-              className={`flex items-center justify-between gap-2 truncate text-left px-1 rounded transition-colors ${
-                isSelected
-                  ? "bg-zinc-800/60 ring-1 ring-zinc-600"
-                  : "hover:bg-zinc-800/30"
-              }`}
-            >
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span
-                  className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ backgroundColor: l.color }}
-                />
-                <span className="text-zinc-200 truncate">{l.symbol}</span>
-                {l.emphasis && (
-                  <span className="text-[9px] text-amber-400/80 uppercase">live</span>
-                )}
-              </div>
-              <span className="text-zinc-400 tabular-nums shrink-0">
-                {Number.isFinite(l.latest) ? fmtNum(l.latest, 2) : "—"}
-              </span>
-            </button>
-          );
-        })}
+      <div className="px-3 py-2 border-t border-zinc-800/60 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] font-mono overflow-y-auto">
+        {lines
+          .slice()
+          .sort((a, b) => {
+            const av = Number.isFinite(a.latest) ? a.latest : -Infinity;
+            const bv = Number.isFinite(b.latest) ? b.latest : -Infinity;
+            return bv - av;
+          })
+          .map((l) => {
+            const isSelected = selected === l.symbol;
+            const isFocused = focusSymbol === l.symbol;
+            const delta =
+              Number.isFinite(l.latest) && Number.isFinite(median) && median !== 0
+                ? ((l.latest - median) / median) * 10_000
+                : NaN;
+            return (
+              <button
+                type="button"
+                key={l.symbol}
+                onClick={() => setSelected(isSelected ? null : l.symbol)}
+                onMouseEnter={() => setHoveredSymbol(l.symbol)}
+                onMouseLeave={() => setHoveredSymbol(null)}
+                className={`flex items-center justify-between gap-2 truncate text-left px-1 py-0.5 rounded transition-colors ${
+                  isSelected
+                    ? "bg-zinc-800/70 ring-1 ring-zinc-600"
+                    : isFocused
+                      ? "bg-zinc-800/40"
+                      : "hover:bg-zinc-800/30"
+                }`}
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span
+                    className="inline-block w-2 h-2 rounded-full shrink-0"
+                    style={{
+                      backgroundColor: l.color,
+                      boxShadow: isFocused
+                        ? `0 0 0 2px ${l.color}33`
+                        : undefined,
+                    }}
+                  />
+                  <span className="text-zinc-200 truncate">{l.symbol}</span>
+                  {l.emphasis && (
+                    <span className="text-[8px] text-amber-400/80 uppercase tracking-wider">
+                      live
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-1.5 shrink-0">
+                  <span className="text-zinc-400 tabular-nums">
+                    {Number.isFinite(l.latest) ? fmtNum(l.latest, 2) : "—"}
+                  </span>
+                  <span
+                    className={`tabular-nums text-[9px] ${deltaClass(delta)}`}
+                    style={{ minWidth: 36, textAlign: "right" }}
+                  >
+                    {Number.isFinite(delta)
+                      ? `${delta >= 0 ? "+" : ""}${fmtNum(delta, 0)}`
+                      : "—"}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
       </div>
     </div>
   );
@@ -380,39 +524,91 @@ function HoverTooltip(props: {
   chartWidth: number;
   x: number;
   ts: number;
+  median: number;
+  focusSymbol: string | null;
   rows: { symbol: string; color: string; v: number }[];
 }) {
-  // Flip the tooltip to the left side of the crosshair if the cursor is
-  // past the chart's midpoint, so it never clips off-screen.
   const flipLeft = props.x > props.chartWidth / 2;
+  const focusedFirst = useMemo(() => {
+    const focused = props.rows.filter((r) => r.symbol === props.focusSymbol);
+    const others = props.rows
+      .filter((r) => r.symbol !== props.focusSymbol)
+      .slice()
+      .sort((a, b) => b.v - a.v);
+    return [...focused, ...others].slice(0, 8);
+  }, [props.rows, props.focusSymbol]);
+
   return (
     <div
-      className="pointer-events-none absolute top-2 glass rounded-md px-2 py-1.5 text-[10px] font-mono min-w-[120px] shadow-lg"
-      style={
-        flipLeft
-          ? { right: `${props.chartWidth - props.x + 8}px` }
-          : { left: `${props.x + 8}px` }
-      }
+      className="pointer-events-none absolute top-2 glass rounded-md text-[10px] font-mono shadow-xl ring-1 ring-zinc-700/40"
+      style={{
+        minWidth: 188,
+        ...(flipLeft
+          ? { right: `${props.chartWidth - props.x + 10}px` }
+          : { left: `${props.x + 10}px` }),
+      }}
     >
-      <div className="text-zinc-500 mb-0.5 text-[9px] uppercase tracking-wider">
-        {fmtTime(props.ts)}
+      <div className="px-2.5 pt-1.5 pb-1 border-b border-zinc-800/70 flex items-center justify-between">
+        <span className="text-zinc-300 text-[10px] tabular-nums tracking-tight">
+          {fmtTimeSec(props.ts)}
+        </span>
+        <span className="text-zinc-500 text-[9px] uppercase tracking-wider">
+          {focusedFirst.length} venues
+        </span>
       </div>
-      {props.rows.map((r) => (
-        <div key={r.symbol} className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span
-              className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: r.color }}
-            />
-            <span className="text-zinc-200 truncate">{r.symbol}</span>
-          </div>
-          <span className="text-zinc-100 tabular-nums shrink-0">
-            {fmtNum(r.v, 2)}
-          </span>
-        </div>
-      ))}
+      <div className="px-2.5 py-1.5 space-y-[2px]">
+        {focusedFirst.map((r) => {
+          const delta =
+            Number.isFinite(props.median) && props.median !== 0
+              ? ((r.v - props.median) / props.median) * 10_000
+              : NaN;
+          const isFocused = r.symbol === props.focusSymbol;
+          return (
+            <div
+              key={r.symbol}
+              className={`flex items-center justify-between gap-2 rounded px-1 ${
+                isFocused ? "bg-zinc-800/70" : ""
+              }`}
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: r.color }}
+                />
+                <span
+                  className={`truncate ${
+                    isFocused ? "text-zinc-50 font-semibold" : "text-zinc-200"
+                  }`}
+                >
+                  {r.symbol}
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2 shrink-0">
+                <span className="text-zinc-100 tabular-nums">
+                  {fmtNum(r.v, 2)}
+                </span>
+                <span
+                  className={`tabular-nums text-[9px] ${deltaClass(delta)}`}
+                  style={{ minWidth: 32, textAlign: "right" }}
+                >
+                  {Number.isFinite(delta)
+                    ? `${delta >= 0 ? "+" : ""}${fmtNum(delta, 0)}`
+                    : "—"}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
+}
+
+function deltaClass(delta: number): string {
+  if (!Number.isFinite(delta)) return "text-zinc-600";
+  if (delta > 5) return "text-emerald-400";
+  if (delta < -5) return "text-rose-400";
+  return "text-zinc-500";
 }
 
 function nearestIndex(sortedAsc: number[], target: number): number {
@@ -441,6 +637,21 @@ function fmtTime(ts: number): string {
   return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 }
 
+function fmtTimeSec(ts: number): string {
+  const d = new Date(ts * 1000);
+  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
+}
+
+function fmtSpan(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "";
+  const m = Math.round(seconds / 60);
+  if (m < 1) return `${Math.round(seconds)}s`;
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  return rem === 0 ? `${h}h` : `${h}h ${rem}m`;
+}
+
 function niceTicks(lo: number, hi: number, n: number): number[] {
   const span = hi - lo;
   if (span <= 0 || !Number.isFinite(span)) return [];
@@ -457,6 +668,4 @@ function niceTicks(lo: number, hi: number, n: number): number[] {
   return out;
 }
 
-// Re-export DriftSample so the shape is reachable from this module's
-// type-only consumers (kept to satisfy lint).
 export type { DriftSample };

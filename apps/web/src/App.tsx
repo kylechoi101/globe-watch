@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import type { AssetUniverseEntry } from "@globe-watch/shared";
-import { useStore, selectActiveAsset } from "./state/store";
+import { useStore, selectActiveAsset, type DriftSample } from "./state/store";
 import { useQuotes } from "./hooks/useQuotes";
 import { useMarketStatuses } from "./hooks/useMarketStatus";
+import { useSeed } from "./hooks/useSeed";
 import { computeDrift } from "./lib/drift";
 import { api } from "./lib/api";
 import type { NewsResponse } from "@globe-watch/shared";
@@ -38,6 +39,7 @@ export default function App() {
   const setActiveAsset = useStore((s) => s.setActiveAsset);
   const universeList = useStore((s) => s.universe);
   const pushDriftSnapshot = useStore((s) => s.pushDriftSnapshot);
+  const seedDriftHistory = useStore((s) => s.seedDriftHistory);
 
   useEffect(() => {
     if (universeData?.assets) setUniverse(universeData.assets);
@@ -64,6 +66,7 @@ export default function App() {
   }, [proxies]);
 
   const { data: quotesData } = useQuotes(symbols, 5000);
+  const { data: seedData } = useSeed(activeAsset?.asset_id ?? null);
   const { statuses: rawStatuses, now } = useMarketStatuses();
 
   // 24/7 assets (Bitcoin) override per-MIC session status: BTC never
@@ -104,6 +107,33 @@ export default function App() {
     if (drift.points.length === 0) return;
     pushDriftSnapshot(drift.points, now);
   }, [drift.points, now, pushDriftSnapshot]);
+
+  // Seed the chart history from /api/seed so the chart draws a real line
+  // on first paint instead of waiting ~10 s for two live polls to land.
+  // We replay computeDrift across each historical sample using the
+  // current market status — close enough since seed samples are a few
+  // minutes old, and the live polls overwrite anything that matters.
+  useEffect(() => {
+    if (!activeAsset || !seedData || seedData.samples.length === 0) return;
+    const perSymbol: Record<string, DriftSample[]> = {};
+    for (const sample of seedData.samples) {
+      const res = computeDrift({
+        proxies: activeAsset.proxies,
+        quotes: sample.quotes,
+        statuses,
+        nowSeconds: sample.ts,
+      });
+      for (const p of res.points) {
+        if (!Number.isFinite(p.implied_usd) && !Number.isFinite(p.drift_bps)) continue;
+        (perSymbol[p.symbol] ??= []).push({
+          ts: sample.ts,
+          drift_bps: p.drift_bps,
+          implied_usd: p.implied_usd,
+        });
+      }
+    }
+    seedDriftHistory(perSymbol);
+  }, [activeAsset, seedData, statuses, seedDriftHistory]);
 
   const [dims, setDims] = useState({ w: window.innerWidth, h: window.innerHeight });
   const [methodologyOpen, setMethodologyOpen] = useState(false);
