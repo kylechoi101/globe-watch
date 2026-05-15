@@ -1,0 +1,21 @@
+{
+  "name": "globe-watch",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Live cross-market globe display — proxy drift, market hours, day/night terminator.",
+  "license": "CC-BY-NC-SA-4.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:worker": "npm --workspace apps/worker run dev",
+    "build:web": "npm --workspace apps/web run build",
+    "build:worker": "npm --workspace apps/worker run build",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

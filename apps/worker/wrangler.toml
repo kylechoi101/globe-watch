@@ -1,0 +1,14 @@
+name = "globe-watch-worker"
+main = "src/index.ts"
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Public env defaults. Sensitive keys go through `wrangler secret put`.
+[vars]
+QUOTE_PRIMARY = "yahoo"     # "yahoo" or "twelvedata"
+CACHE_TTL_SECONDS = "5"
+
+# Local dev binds; CORS allow-list for the Pages frontend.
+[dev]
+port = 8787
+local_protocol = "http"

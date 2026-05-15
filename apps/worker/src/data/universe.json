@@ -1,0 +1,136 @@
+{
+  "version": "0.2.0",
+  "generated_at": "2026-05-14",
+  "notes": "Scaling factors kᵢ calibrated to spot prices on 2026-05-14. Refresh quarterly via OLS over 60 days of overlapping-hour quotes. One proxy per major time-zone bucket (Americas / Europe / Asia) — no proxies within ~2 hours of each other.",
+  "assets": [
+    {
+      "asset_id": "SPX",
+      "display_name": "S&P 500",
+      "underlying_symbol": "^GSPC",
+      "trading_24_7": false,
+      "proxies": [
+        { "symbol": "SPY",     "name": "SPDR S&P 500 ETF",                  "country": "US", "city": "New York", "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",          "scaling_k": 0.09974,  "is_reference_candidate": true },
+        { "symbol": "CSPX.L",  "name": "iShares Core S&P 500 (LSE, USD)",   "country": "GB", "city": "London",   "lat": 51.5074, "lon": -0.1278,  "exchange_mic": "XLON", "currency": "USD", "fx_symbol": "",          "scaling_k": 0.10761,  "is_reference_candidate": true },
+        { "symbol": "1547.T",  "name": "NEXT FUNDS S&P 500 (Tokyo, JPY)",   "country": "JP", "city": "Tokyo",    "lat": 35.6762, "lon": 139.6503, "exchange_mic": "XTKS", "currency": "JPY", "fx_symbol": "JPYUSD=X",  "scaling_k": 0.01074,  "is_reference_candidate": true }
+      ]
+    },
+    {
+      "asset_id": "NDX",
+      "display_name": "Nasdaq 100",
+      "underlying_symbol": "^NDX",
+      "trading_24_7": false,
+      "proxies": [
+        { "symbol": "QQQ",     "name": "Invesco QQQ Trust",                  "country": "US", "city": "New York", "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNAS", "currency": "USD", "fx_symbol": "",         "scaling_k": 0.02434,  "is_reference_candidate": true },
+        { "symbol": "CNDX.L",  "name": "iShares Nasdaq 100 (LSE, USD)",      "country": "GB", "city": "London",   "lat": 51.5074, "lon": -0.1278,  "exchange_mic": "XLON", "currency": "USD", "fx_symbol": "",         "scaling_k": 0.05751,  "is_reference_candidate": true },
+        { "symbol": "1545.T",  "name": "NEXT FUNDS Nasdaq 100 (Tokyo, JPY)", "country": "JP", "city": "Tokyo",    "lat": 35.6762, "lon": 139.6503, "exchange_mic": "XTKS", "currency": "JPY", "fx_symbol": "JPYUSD=X", "scaling_k": 0.01003,  "is_reference_candidate": true }
+      ]
+    },
+    {
+      "asset_id": "N225",
+      "display_name": "Nikkei 225",
+      "underlying_symbol": "^N225",
+      "trading_24_7": false,
+      "proxies": [
+        { "symbol": "1321.T",  "name": "Nomura Nikkei 225 ETF (Tokyo, JPY)", "country": "JP", "city": "Tokyo",    "lat": 35.6762, "lon": 139.6503, "exchange_mic": "XTKS", "currency": "JPY", "fx_symbol": "JPYUSD=X", "scaling_k": 0.006597, "is_reference_candidate": true },
+        { "symbol": "CN1.L",   "name": "iShares Nikkei 225 UCITS (LSE, GBP)","country": "GB", "city": "London",   "lat": 51.5074, "lon": -0.1278,  "exchange_mic": "XLON", "currency": "GBP", "fx_symbol": "GBPUSD=X", "scaling_k": 0.01014,  "is_reference_candidate": true }
+      ]
+    },
+    {
+      "asset_id": "FTSE",
+      "display_name": "FTSE 100",
+      "underlying_symbol": "^FTSE",
+      "trading_24_7": false,
+      "proxies": [
+        { "symbol": "ISF.L",   "name": "iShares Core FTSE 100 (LSE, GBP)",   "country": "GB", "city": "London",   "lat": 51.5074, "lon": -0.1278,  "exchange_mic": "XLON", "currency": "GBP", "fx_symbol": "GBPUSD=X", "scaling_k": 0.001318, "is_reference_candidate": true },
+        { "symbol": "EWU",     "name": "iShares MSCI United Kingdom",        "country": "US", "city": "New York", "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",         "scaling_k": 0.004495, "is_reference_candidate": true }
+      ]
+    },
+    {
+      "asset_id": "DAX",
+      "display_name": "DAX 40",
+      "underlying_symbol": "^GDAXI",
+      "trading_24_7": false,
+      "proxies": [
+        { "symbol": "EXS1.DE", "name": "iShares Core DAX (Xetra, EUR)",      "country": "DE", "city": "Frankfurt","lat": 50.1109, "lon": 8.6821,   "exchange_mic": "XETR", "currency": "EUR", "fx_symbol": "EURUSD=X", "scaling_k": 0.009627, "is_reference_candidate": true },
+        { "symbol": "EWG",     "name": "iShares MSCI Germany",               "country": "US", "city": "New York", "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",         "scaling_k": 0.001727, "is_reference_candidate": true }
+      ]
+    },
+    {
+      "asset_id": "HSI",
+      "display_name": "Hang Seng",
+      "underlying_symbol": "^HSI",
+      "trading_24_7": false,
+      "proxies": [
+        { "symbol": "2800.HK", "name": "Tracker Fund of Hong Kong",          "country": "HK", "city": "Hong Kong","lat": 22.3193, "lon": 114.1694, "exchange_mic": "XHKG", "currency": "HKD", "fx_symbol": "HKDUSD=X", "scaling_k": 0.0001285,"is_reference_candidate": true },
+        { "symbol": "EWH",     "name": "iShares MSCI Hong Kong",             "country": "US", "city": "New York", "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",         "scaling_k": 0.0009254,"is_reference_candidate": true }
+      ]
+    },
+    {
+      "asset_id": "AXJO",
+      "display_name": "ASX 200",
+      "underlying_symbol": "^AXJO",
+      "trading_24_7": false,
+      "proxies": [
+        { "symbol": "STW.AX",  "name": "SPDR S&P/ASX 200 (Sydney)",          "country": "AU", "city": "Sydney",   "lat": -33.8688,"lon": 151.2093, "exchange_mic": "XASX", "currency": "AUD", "fx_symbol": "AUDUSD=X", "scaling_k": 0.006509, "is_reference_candidate": true },
+        { "symbol": "EWA",     "name": "iShares MSCI Australia",             "country": "US", "city": "New York", "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",         "scaling_k": 0.003389, "is_reference_candidate": true }
+      ]
+    },
+    {
+      "asset_id": "SX5E",
+      "display_name": "Euro Stoxx 50",
+      "underlying_symbol": "^STOXX50E",
+      "trading_24_7": false,
+      "proxies": [
+        { "symbol": "EXW1.DE", "name": "iShares Euro Stoxx 50 (Xetra, EUR)", "country": "DE", "city": "Frankfurt","lat": 50.1109, "lon": 8.6821,   "exchange_mic": "XETR", "currency": "EUR", "fx_symbol": "EURUSD=X", "scaling_k": 0.01193,  "is_reference_candidate": true },
+        { "symbol": "FEZ",     "name": "SPDR Euro Stoxx 50",                 "country": "US", "city": "New York", "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",         "scaling_k": 0.01118,  "is_reference_candidate": true }
+      ]
+    },
+    {
+      "asset_id": "GOLD",
+      "display_name": "Gold",
+      "underlying_symbol": "GC=F",
+      "trading_24_7": false,
+      "proxies": [
+        { "symbol": "GLD",     "name": "SPDR Gold Shares",                     "country": "US", "city": "New York", "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",          "scaling_k": 0.09157,   "is_reference_candidate": true },
+        { "symbol": "IAU",     "name": "iShares Gold Trust",                   "country": "US", "city": "New York", "lat": 40.7400, "lon": -73.990,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",          "scaling_k": 0.01877,   "is_reference_candidate": true },
+        { "symbol": "CGL.TO",  "name": "iShares Gold Bullion (Toronto)",       "country": "CA", "city": "Toronto",  "lat": 43.6532, "lon": -79.3832, "exchange_mic": "XTSE", "currency": "CAD", "fx_symbol": "CADUSD=X",  "scaling_k": 0.005556,  "is_reference_candidate": true },
+        { "symbol": "IAU.TO",  "name": "iShares Gold Bullion CAD-Hedged (Toronto)", "country": "CA", "city": "Toronto", "lat": 43.6700, "lon": -79.4000, "exchange_mic": "XTSE", "currency": "CAD", "fx_symbol": "CADUSD=X", "scaling_k": 0.000336, "is_reference_candidate": true },
+        { "symbol": "SGLN.L",  "name": "iShares Physical Gold ETC (LSE, GBP)", "country": "GB", "city": "London",   "lat": 51.5074, "lon": -0.1278,  "exchange_mic": "XLON", "currency": "GBP", "fx_symbol": "GBPUSD=X",  "scaling_k": 0.01938,   "is_reference_candidate": true },
+        { "symbol": "PHAU.L",  "name": "Invesco Physical Gold ETC (LSE, USD)", "country": "GB", "city": "London",   "lat": 51.5100, "lon": -0.1000,  "exchange_mic": "XLON", "currency": "USD", "fx_symbol": "",          "scaling_k": 0.09327,   "is_reference_candidate": true },
+        { "symbol": "4GLD.DE", "name": "Xetra-Gold (Frankfurt, EUR)",          "country": "DE", "city": "Frankfurt","lat": 50.1109, "lon": 8.6821,   "exchange_mic": "XETR", "currency": "EUR", "fx_symbol": "EURUSD=X",  "scaling_k": 0.03230,   "is_reference_candidate": true },
+        { "symbol": "1326.T",  "name": "NEXT FUNDS NOMURA Gold (Tokyo, JPY)",  "country": "JP", "city": "Tokyo",    "lat": 35.6762, "lon": 139.6503, "exchange_mic": "XTKS", "currency": "JPY", "fx_symbol": "USDJPY=X",  "scaling_k": 0.09178,   "is_reference_candidate": true },
+        { "symbol": "2840.HK", "name": "SPDR Gold Trust (Hong Kong)",          "country": "HK", "city": "Hong Kong","lat": 22.3193, "lon": 114.1694, "exchange_mic": "XHKG", "currency": "HKD", "fx_symbol": "HKDUSD=X",  "scaling_k": 0.09221,   "is_reference_candidate": true },
+        { "symbol": "GOLD.AX", "name": "Global X Physical Gold (Sydney)",      "country": "AU", "city": "Sydney",   "lat": -33.8688,"lon": 151.2093, "exchange_mic": "XASX", "currency": "AUD", "fx_symbol": "AUDUSD=X",  "scaling_k": 0.009152,  "is_reference_candidate": true }
+      ]
+    },
+    {
+      "asset_id": "BTC",
+      "display_name": "Bitcoin",
+      "underlying_symbol": "BTC-USD",
+      "trading_24_7": true,
+      "notes": "Venues are spot fiat pairs from Yahoo Finance. Each pair shows the price of 1 BTC in that local currency. Drift between them is FX-translated cross-currency disagreement (plus small Yahoo source-feed timing differences).",
+      "proxies": [
+        { "symbol": "BTC-USD", "name": "BTC / USD spot",       "country": "US", "city": "New York",    "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",         "scaling_k": 1.0, "is_reference_candidate": true },
+        { "symbol": "BTC-EUR", "name": "BTC / EUR spot",       "country": "DE", "city": "Frankfurt",   "lat": 50.1109, "lon": 8.6821,   "exchange_mic": "XETR", "currency": "EUR", "fx_symbol": "EURUSD=X", "scaling_k": 1.0, "is_reference_candidate": true },
+        { "symbol": "BTC-GBP", "name": "BTC / GBP spot",       "country": "GB", "city": "London",      "lat": 51.5074, "lon": -0.1278,  "exchange_mic": "XLON", "currency": "GBP", "fx_symbol": "GBPUSD=X", "scaling_k": 1.0, "is_reference_candidate": true },
+        { "symbol": "BTC-JPY", "name": "BTC / JPY spot",       "country": "JP", "city": "Tokyo",       "lat": 35.6762, "lon": 139.6503, "exchange_mic": "XTKS", "currency": "JPY", "fx_symbol": "USDJPY=X", "scaling_k": 1.0, "is_reference_candidate": true },
+        { "symbol": "BTC-AUD", "name": "BTC / AUD spot",       "country": "AU", "city": "Sydney",      "lat": -33.8688,"lon": 151.2093, "exchange_mic": "XASX", "currency": "AUD", "fx_symbol": "AUDUSD=X", "scaling_k": 1.0, "is_reference_candidate": true },
+        { "symbol": "BTC-CAD", "name": "BTC / CAD spot",       "country": "CA", "city": "Toronto",     "lat": 43.6532, "lon": -79.3832, "exchange_mic": "XTSE", "currency": "CAD", "fx_symbol": "CADUSD=X", "scaling_k": 1.0, "is_reference_candidate": true },
+        { "symbol": "BTC-KRW", "name": "BTC / KRW spot (Korea)","country": "KR", "city": "Seoul",      "lat": 37.5665, "lon": 126.978,  "exchange_mic": "XKRX", "currency": "KRW", "fx_symbol": "USDKRW=X", "scaling_k": 1.0, "is_reference_candidate": true },
+        { "symbol": "BTC-CNY", "name": "BTC / CNY spot (China)","country": "CN", "city": "Beijing",    "lat": 39.9042, "lon": 116.4074, "exchange_mic": "XSHG", "currency": "CNY", "fx_symbol": "USDCNY=X", "scaling_k": 1.0, "is_reference_candidate": true },
+        { "symbol": "BTC-INR", "name": "BTC / INR spot (India)","country": "IN", "city": "Mumbai",     "lat": 19.076,  "lon": 72.8777,  "exchange_mic": "XBOM", "currency": "INR", "fx_symbol": "USDINR=X", "scaling_k": 1.0, "is_reference_candidate": true },
+        { "symbol": "BTC-RUB", "name": "BTC / RUB spot (Russia)","country": "RU", "city": "Moscow",    "lat": 55.7558, "lon": 37.6173,  "exchange_mic": "MISX", "currency": "RUB", "fx_symbol": "USDRUB=X", "scaling_k": 1.0, "is_reference_candidate": true }
+      ]
+    },
+    {
+      "asset_id": "EM",
+      "display_name": "MSCI Emerging Markets",
+      "underlying_symbol": "EEM",
+      "trading_24_7": false,
+      "proxies": [
+        { "symbol": "EEM",     "name": "iShares MSCI Emerging Markets",      "country": "US", "city": "New York", "lat": 40.7128, "lon": -74.006,  "exchange_mic": "XNYS", "currency": "USD", "fx_symbol": "",         "scaling_k": 1.0,      "is_reference_candidate": true },
+        { "symbol": "EMIM.L",  "name": "iShares Core MSCI EM IMI (LSE, GBP)","country": "GB", "city": "London",   "lat": 51.5074, "lon": -0.1278,  "exchange_mic": "XLON", "currency": "GBP", "fx_symbol": "GBPUSD=X", "scaling_k": 0.8124,   "is_reference_candidate": true }
+      ]
+    }
+  ]
+}
