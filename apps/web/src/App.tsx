@@ -136,7 +136,11 @@ export default function App() {
       <FollowIndexButton active={followSun} onToggle={toggleFollowSun} />
 
       {activeAsset?.display_mode === "big_chart" ? (
-        <BigPriceChart asset={activeAsset} points={drift.points} />
+        <BigPriceChart
+          asset={activeAsset}
+          points={drift.points}
+          statuses={statuses}
+        />
       ) : (
         <ChartsPanel
           points={drift.points}

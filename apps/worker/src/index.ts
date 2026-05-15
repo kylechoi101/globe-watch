@@ -1,12 +1,13 @@
 import universeData from "./data/universe.json";
 import exchangesData from "./data/exchanges.json";
 import { getQuotes } from "./quotes";
-import { getNews } from "./news";
+import { getNews, refreshNewsCache } from "./news";
 
 interface Env {
   QUOTE_PRIMARY?: string;
   CACHE_TTL_SECONDS?: string;
   TWELVE_DATA_KEY?: string;
+  NEWS_KV: KVNamespace;
 }
 
 const ALLOWED_ORIGINS = new Set([
@@ -41,7 +42,11 @@ function json(req: Request, body: unknown, init: ResponseInit = {}): Response {
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(
+    req: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
     if (req.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(req) });
     }
@@ -56,7 +61,7 @@ export default {
     }
 
     if (url.pathname === "/api/news") {
-      const articles = await getNews();
+      const articles = await getNews(env, ctx);
       return json(
         req,
         {
@@ -110,16 +115,16 @@ export default {
 
   /**
    * Cron Trigger — runs every 5 minutes per wrangler.toml.
-   * Pre-warms the news cache so user-facing requests never pay the
-   * full GDELT round-trip latency.
+   * Force-refreshes the KV news cache so user requests in every isolate
+   * (not just the one the cron ran in) see warm data.
    */
   async scheduled(
     _event: ScheduledEvent,
-    _env: Env,
+    env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
     ctx.waitUntil(
-      getNews().catch((err) => {
+      refreshNewsCache(env).catch((err) => {
         console.warn("scheduled news refresh failed", err);
       }),
     );

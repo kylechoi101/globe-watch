@@ -4,10 +4,25 @@ compatibility_date = "2026-05-01"
 compatibility_flags = ["nodejs_compat"]
 
 # Pre-warm the news cache. GDELT takes 5-15s on a cold miss; this keeps
-# the in-memory cache (10-min TTL) refreshed in the background so user
-# loads almost always hit a warm response.
+# the KV-backed cache (10-min TTL) refreshed in the background so user
+# loads almost always hit a warm response — and because KV is shared
+# across every isolate worldwide, the cron's warming is visible to all
+# requests, not just the isolate the cron happened to land in.
 [triggers]
 crons = ["*/5 * * * *"]
+
+# Shared KV store for the news cache. The in-memory Map we used before
+# was per-isolate, so cron-warmed data was invisible to most user
+# requests.
+#
+# Bootstrap (one time):
+#   wrangler kv namespace create NEWS_KV
+#   wrangler kv namespace create NEWS_KV --preview
+# then paste the returned ids below.
+[[kv_namespaces]]
+binding = "NEWS_KV"
+id = "c625631eb40042248608472338eb639b"
+preview_id = "f79342ae81e948139e5359dff079090f"
 
 # Public env defaults. Sensitive keys go through `wrangler secret put`.
 [vars]

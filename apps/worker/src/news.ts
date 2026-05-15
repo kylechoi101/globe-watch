@@ -1,12 +1,18 @@
-import { cacheGet, cacheSet } from "./cache";
 import countryCentroids from "./data/countries.json";
 import placeList from "./data/places.json";
 
-const CACHE_TTL = 600; // 10 minutes; refresh ~ every 5 min via Cron, so the
-                       // in-memory cache stays warm and the GDELT round-trip
-                       // happens in the background instead of on a user's first
-                       // page load.
+// KV TTL. Cron refreshes every 5 min, so a 10-min TTL means we always have
+// a valid (if briefly stale) value to serve while the next refresh writes.
+// KV reads in a colo are ~10-30 ms after the first hit in that colo, so this
+// is functionally as fast as the old in-memory cache — but shared across
+// every isolate worldwide.
+const CACHE_TTL = 600;
+const CACHE_KEY = "news:global:v1";
 const MAX_ARTICLES = 10;
+
+export interface NewsEnv {
+  NEWS_KV: KVNamespace;
+}
 
 const CENTROIDS = countryCentroids as unknown as Record<string, unknown>;
 
@@ -125,11 +131,7 @@ function parseSeenDate(s: string): number {
   return Math.floor(Date.UTC(y, mo, d, h, mi, se) / 1000);
 }
 
-export async function getNews(): Promise<NewsArticle[]> {
-  const cacheKey = "news:global";
-  const cached = cacheGet<NewsArticle[]>(cacheKey);
-  if (cached) return cached;
-
+async function fetchNewsLive(): Promise<{ articles: NewsArticle[]; ok: boolean }> {
   const params = new URLSearchParams({
     query: GLOBAL_QUERY,
     mode: "ArtList",
@@ -140,8 +142,6 @@ export async function getNews(): Promise<NewsArticle[]> {
   });
   const url = `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`;
 
-  let articles: NewsArticle[] = [];
-  let ok = false;
   try {
     const res = await fetch(url, {
       headers: {
@@ -153,76 +153,104 @@ export async function getNews(): Promise<NewsArticle[]> {
     const text = await res.text();
     if (!res.ok) {
       console.warn("gdelt non-ok", res.status, text.slice(0, 200));
-    } else {
-      try {
-        const data = JSON.parse(text) as GdeltResponse;
-        const enriched = (data.articles ?? [])
-          .filter((a) => a.title && a.url && (a.language ?? "") === "English")
-          .map((a) => {
-            const title = cleanTitle(a.title);
-            const country = a.sourcecountry ?? "";
+      return { articles: [], ok: false };
+    }
+    let data: GdeltResponse;
+    try {
+      data = JSON.parse(text) as GdeltResponse;
+    } catch (parseErr) {
+      // GDELT sometimes returns HTML / plain text errors (rate limit,
+      // malformed query). Log and signal failure so we skip caching.
+      console.warn("gdelt non-json response", text.slice(0, 200), parseErr);
+      return { articles: [], ok: false };
+    }
 
-            // 1) Place mentioned in the headline beats the publisher's
-            //    country. "Yen drops after BOJ holds" pinned to Tokyo even
-            //    if Reuters London reported it.
-            const fromTitle = extractLocation(title);
-            // 2) Source-country centroid as the fallback anchor.
-            const fallback = lookupCentroid(country);
-            const coords =
-              fromTitle != null
-                ? [fromTitle.lat, fromTitle.lon]
-                : fallback != null
-                  ? fallback
-                  : null;
+    const enriched = (data.articles ?? [])
+      .filter((a) => a.title && a.url && (a.language ?? "") === "English")
+      .map((a) => {
+        const title = cleanTitle(a.title);
+        const country = a.sourcecountry ?? "";
 
-            return {
-              url: a.url,
-              title,
-              domain: a.domain,
-              source_country: country,
-              language: a.language ?? "",
-              seen_at: parseSeenDate(a.seendate),
-              lat: coords ? coords[0] : null,
-              lon: coords ? coords[1] : null,
-            };
-          });
+        // 1) Place mentioned in the headline beats the publisher's country.
+        //    "Yen drops after BOJ holds" pinned to Tokyo even if Reuters
+        //    London reported it.
+        const fromTitle = extractLocation(title);
+        // 2) Source-country centroid as the fallback anchor.
+        const fallback = lookupCentroid(country);
+        const coords =
+          fromTitle != null
+            ? [fromTitle.lat, fromTitle.lon]
+            : fallback != null
+              ? fallback
+              : null;
 
-        // 3) Dedup wire-service repeats. Group by normalized title prefix;
-        //    keep the freshest entry per group.
-        const groups = new Map<string, typeof enriched[number]>();
-        for (const a of enriched) {
-          const key = normalizeTitle(a.title);
-          if (!key) continue;
-          const existing = groups.get(key);
-          if (!existing || a.seen_at > existing.seen_at) {
-            groups.set(key, a);
-          }
-        }
+        return {
+          url: a.url,
+          title,
+          domain: a.domain,
+          source_country: country,
+          language: a.language ?? "",
+          seen_at: parseSeenDate(a.seendate),
+          lat: coords ? coords[0] : null,
+          lon: coords ? coords[1] : null,
+        };
+      });
 
-        articles = Array.from(groups.values())
-          .sort((a, b) => b.seen_at - a.seen_at)
-          .slice(0, MAX_ARTICLES);
-        ok = true;
-      } catch (parseErr) {
-        // GDELT sometimes returns HTML / plain text errors (rate limit,
-        // malformed query). Log and skip caching so we retry next time.
-        console.warn(
-          "gdelt non-json response",
-          text.slice(0, 200),
-          parseErr,
-        );
+    // 3) Dedup wire-service repeats. Group by normalized title prefix;
+    //    keep the freshest entry per group.
+    const groups = new Map<string, typeof enriched[number]>();
+    for (const a of enriched) {
+      const key = normalizeTitle(a.title);
+      if (!key) continue;
+      const existing = groups.get(key);
+      if (!existing || a.seen_at > existing.seen_at) {
+        groups.set(key, a);
       }
     }
+
+    const articles = Array.from(groups.values())
+      .sort((a, b) => b.seen_at - a.seen_at)
+      .slice(0, MAX_ARTICLES);
+    return { articles, ok: true };
   } catch (err) {
     console.error("gdelt fetch failed", err);
+    return { articles: [], ok: false };
   }
+}
 
-  // Only cache on success — failures stay uncached so a transient hiccup
-  // doesn't pin an empty result for 5 minutes.
-  if (ok) cacheSet(cacheKey, articles, CACHE_TTL);
-  // Brief negative-cache (15 s) on failure to avoid hammering the upstream
-  // rate limit during a stretch of bad responses.
-  else cacheSet(cacheKey, articles, 15);
+/**
+ * Read-through KV cache. Most requests hit KV (~10-30 ms in a warm colo) and
+ * never touch GDELT. On a cold miss we fall through to a live fetch and
+ * write the result back asynchronously so we don't block the response.
+ */
+export async function getNews(
+  env: NewsEnv,
+  ctx?: ExecutionContext,
+): Promise<NewsArticle[]> {
+  const cached = await env.NEWS_KV.get<NewsArticle[]>(CACHE_KEY, "json");
+  if (cached) return cached;
 
+  const { articles, ok } = await fetchNewsLive();
+  if (ok) {
+    const write = env.NEWS_KV.put(CACHE_KEY, JSON.stringify(articles), {
+      expirationTtl: CACHE_TTL,
+    });
+    if (ctx) ctx.waitUntil(write);
+    else await write;
+  }
+  // On failure: don't write to KV — the next request retries. KV's minimum
+  // TTL is 60s so a brief negative-cache isn't worth the complexity.
   return articles;
+}
+
+/**
+ * Force a fresh fetch and overwrite the KV cache. Called from the cron so
+ * the cache stays warm even when no users have hit /api/news recently.
+ */
+export async function refreshNewsCache(env: NewsEnv): Promise<void> {
+  const { articles, ok } = await fetchNewsLive();
+  if (!ok) return;
+  await env.NEWS_KV.put(CACHE_KEY, JSON.stringify(articles), {
+    expirationTtl: CACHE_TTL,
+  });
 }
