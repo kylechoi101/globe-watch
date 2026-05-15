@@ -6,7 +6,7 @@ import { api } from "../lib/api";
 const fetcher = (url: string) =>
   fetch(url).then((r) => r.json() as Promise<NewsResponse>);
 
-export function NewsPanel(props: { embedded?: boolean } = {}) {
+export function NewsPanel() {
   const { data, isLoading } = useSWR<NewsResponse>(
     api("/api/news"),
     fetcher,
@@ -20,9 +20,6 @@ export function NewsPanel(props: { embedded?: boolean } = {}) {
   const selectedUrl = useStore((s) => s.selectedArticleUrl);
   const selectArticle = useStore((s) => s.selectArticle);
   const articles = (data?.articles ?? []).slice(0, 10);
-  const rootClass = props.embedded
-    ? "h-full flex flex-col"
-    : "absolute bottom-4 left-4 w-[340px] glass rounded-lg flex flex-col max-h-[calc(100vh-360px)] hidden md:flex";
 
   const handleRowClick =
     (a: NewsArticle) => (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -39,7 +36,7 @@ export function NewsPanel(props: { embedded?: boolean } = {}) {
     };
 
   return (
-    <div className={rootClass}>
+    <div className="absolute bottom-4 left-4 w-[340px] glass rounded-lg flex-col max-h-[calc(100vh-360px)] hidden md:flex">
       <header className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-800/60">
         <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
           global news

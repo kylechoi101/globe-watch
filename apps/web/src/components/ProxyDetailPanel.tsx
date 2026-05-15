@@ -7,7 +7,6 @@ interface Props {
   points: DriftPoint[];
   statuses: Record<string, MarketStatus>;
   referenceSymbol: string | null;
-  embedded?: boolean;
 }
 
 /**
@@ -38,13 +37,7 @@ export function ProxyDetailPanel(props: Props) {
     : "—";
 
   return (
-    <div
-      className={
-        props.embedded
-          ? "px-3 py-3 text-zinc-200"
-          : "absolute left-4 top-20 w-[280px] glass rounded-lg px-3 py-2 text-zinc-200 pointer-events-none hidden md:block"
-      }
-    >
+    <div className="absolute left-4 top-20 w-[280px] glass rounded-lg px-3 py-2 text-zinc-200 pointer-events-none hidden md:block">
       <div className="flex items-baseline justify-between gap-2 mb-0.5">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-base font-semibold text-zinc-100">

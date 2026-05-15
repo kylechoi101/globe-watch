@@ -25,7 +25,7 @@ export function AssetPicker(props: Props) {
   return (
     <div
       ref={ref}
-      className="absolute top-3 left-1/2 -translate-x-1/2 font-mono text-zinc-200 z-30"
+      className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 font-mono text-zinc-200 z-30"
     >
       <button
         type="button"

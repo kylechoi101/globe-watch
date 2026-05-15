@@ -17,6 +17,7 @@ interface Props {
   statuses: Record<string, MarketStatus>;
   newsArticles: NewsArticle[];
   followSun: boolean;
+  is24_7: boolean;
   width: number;
   height: number;
 }
@@ -74,31 +75,37 @@ export function Globe(props: Props) {
 
   // Follow-the-index camera: aim where the asset is currently being
   // traded live. Priority:
-  //   1. Reference proxy whose exchange is open.
-  //   2. Any other proxy whose exchange is open.
-  //   3. Whichever longitude has local time 08:00 right now (lat 0).
+  //   1. 24/7 assets (BTC, gold spot-style) → always track the longitude
+  //      where local time is 09:00 — the "dawn of the trading day".
+  //   2. Reference proxy whose exchange is open.
+  //   3. Any other proxy whose exchange is open.
+  //   4. Fallback: longitude with local time 09:00 (lat 0).
   useEffect(() => {
     const g = globeRef.current;
     if (!g) return;
     if (!props.followSun) return;
 
+    const aimAt9am = (): { lat: number; lng: number } => {
+      const utcHours =
+        new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
+      let lon = 15 * (9 - utcHours);
+      lon = ((lon + 540) % 360) - 180;
+      return { lat: 0, lng: lon };
+    };
+
     const aim = () => {
-      const openProxies = props.driftPoints.filter(
-        (p) => props.statuses[p.proxy.exchange_mic]?.is_open,
-      );
-      let target: { lat: number; lng: number } | null = null;
-      const ref = openProxies.find((p) => p.is_reference);
-      const pick = ref ?? openProxies[0];
-      if (pick) {
-        target = { lat: pick.proxy.lat, lng: pick.proxy.lon };
+      let target: { lat: number; lng: number };
+      if (props.is24_7) {
+        target = aimAt9am();
       } else {
-        // Whole globe closed (weekend / synchronized holiday). Hard-lock the
-        // camera to whichever longitude currently has local time 08:00.
-        const utcHours =
-          new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
-        let lon = 15 * (8 - utcHours);
-        lon = ((lon + 540) % 360) - 180;
-        target = { lat: 0, lng: lon };
+        const openProxies = props.driftPoints.filter(
+          (p) => props.statuses[p.proxy.exchange_mic]?.is_open,
+        );
+        const ref = openProxies.find((p) => p.is_reference);
+        const pick = ref ?? openProxies[0];
+        target = pick
+          ? { lat: pick.proxy.lat, lng: pick.proxy.lon }
+          : aimAt9am();
       }
       g.pointOfView(
         { lat: target.lat, lng: target.lng, altitude: 2.3 },
@@ -108,7 +115,7 @@ export function Globe(props: Props) {
     aim();
     const t = setInterval(aim, 60_000);
     return () => clearInterval(t);
-  }, [props.followSun, props.driftPoints, props.statuses]);
+  }, [props.followSun, props.is24_7, props.driftPoints, props.statuses]);
 
   const newsPings: NewsPing[] = useMemo(
     () =>
