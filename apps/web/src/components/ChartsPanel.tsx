@@ -7,8 +7,6 @@ import { MiniChart, type ChartLine } from "./MiniChart";
 interface Props {
   points: DriftPoint[];
   referenceSymbol: string | null;
-  /** If true, hide on md+ screens (because BigPriceChart takes over on desktop). */
-  desktopHidden?: boolean;
 }
 
 function useIsMobile(): boolean {
@@ -35,12 +33,9 @@ const PROXY_PALETTE: Record<string, string> = {
 export function ChartsPanel(props: Props) {
   const history = useStore((s) => s.history);
   const isMobile = useIsMobile();
-  const desktopVis = props.desktopHidden ? "md:hidden" : "md:flex";
 
   return (
-    <div
-      className={`absolute top-14 right-3 bottom-28 flex flex-col gap-1.5 overflow-y-auto pointer-events-none md:top-16 md:right-4 md:bottom-4 ${desktopVis}`}
-    >
+    <div className="absolute top-14 right-3 bottom-28 flex flex-col gap-1.5 overflow-y-auto pointer-events-none md:top-16 md:right-4 md:bottom-4">
       {props.points.map((p) => (
         <ProxyCard
           key={p.symbol}

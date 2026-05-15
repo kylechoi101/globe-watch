@@ -20,6 +20,7 @@ import { AssetPicker } from "./components/AssetPicker";
 import { Footer } from "./components/Footer";
 import { TickerButton } from "./components/TickerButton";
 import { NewsRotator } from "./components/NewsRotator";
+import { MobileBigChart } from "./components/MobileBigChart";
 
 const universeFetcher = (url: string) =>
   fetch(url).then((r) => r.json() as Promise<{ assets: AssetUniverseEntry[] }>);
@@ -139,7 +140,6 @@ export default function App() {
 
   const [dims, setDims] = useState({ w: window.innerWidth, h: window.innerHeight });
   const [methodologyOpen, setMethodologyOpen] = useState(false);
-  const [newsVisible, setNewsVisible] = useState(true);
   useEffect(() => {
     const onResize = () =>
       setDims({ w: window.innerWidth, h: window.innerHeight });
@@ -169,18 +169,21 @@ export default function App() {
 
       <FollowIndexButton active={followSun} onToggle={toggleFollowSun} />
 
-      {activeAsset?.display_mode === "big_chart" && (
-        <BigPriceChart
-          asset={activeAsset}
+      {activeAsset?.display_mode === "big_chart" ? (
+        <>
+          <BigPriceChart
+            asset={activeAsset}
+            points={drift.points}
+            statuses={statuses}
+          />
+          <MobileBigChart asset={activeAsset} points={drift.points} />
+        </>
+      ) : (
+        <ChartsPanel
           points={drift.points}
-          statuses={statuses}
+          referenceSymbol={drift.reference_symbol}
         />
       )}
-      <ChartsPanel
-        points={drift.points}
-        referenceSymbol={drift.reference_symbol}
-        desktopHidden={activeAsset?.display_mode === "big_chart"}
-      />
 
       <ProxyDetailPanel
         points={drift.points}
@@ -213,12 +216,7 @@ export default function App() {
         onToggleFollow={toggleFollowSun}
       />
 
-      <NewsRotator
-        articles={newsData?.articles ?? []}
-        visible={newsVisible}
-        onClose={() => setNewsVisible(false)}
-        onOpen={() => setNewsVisible(true)}
-      />
+      <NewsRotator articles={newsData?.articles ?? []} />
 
       <Footer />
     </div>
